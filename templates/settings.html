@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% block title %}Settings — AI Student Helper{% endblock %}
+
+{% block content %}
+<div class="pg-wrap">
+
+  <!-- Page header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title">Settings</h1>
+      <p class="pg-sub">Customize your learning experience and app preferences</p>
+    </div>
+    <button type="submit" form="settings-form" class="sett-save-btn" id="settings-save-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Changes
+    </button>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for message in messages %}
+        <div class="flash-msg" style="padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.88rem; font-weight: 500; margin-bottom: 1.25rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; text-align: left;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
+
+    <!-- ── Learning Preferences ── -->
+    <div class="sett-card">
+      <div class="sett-section-header">
+        <div class="sett-section-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        </div>
+        <div>
+          <div class="sett-section-title">Learning Preferences</div>
+          <div class="sett-section-sub">Set your default subject and AI model for chat sessions</div>
+        </div>
+      </div>
+
+      <div class="sett-two-col">
+        <div class="auth-field-group">
+          <label class="auth-label" for="sett-subject">DEFAULT SUBJECT</label>
+          <p style="font-size:0.75rem; color:#555; margin:0 0 0.4rem;">This subject will be pre-selected when you start a new chat</p>
+          <select id="sett-subject" name="default_subject" class="sett-select">
+            {% set current_subject = settings.get('default_subject', 'Math') %}
+            <option value="Math"             {% if current_subject == 'Math' %}selected{% endif %}>Mathematics</option>
+            <option value="Science"          {% if current_subject == 'Science' %}selected{% endif %}>Science</option>
+            <option value="Computer Science" {% if current_subject == 'Computer Science' %}selected{% endif %}>Computer Science</option>
+            <option value="History"          {% if current_subject == 'History' %}selected{% endif %}>History</option>
+            <option value="English"          {% if current_subject == 'English' %}selected{% endif %}>English</option>
+            <option value="Other"            {% if current_subject == 'Other' %}selected{% endif %}>Other</option>
+          </select>
+        </div>
+
+        <div class="auth-field-group">
+          <label class="auth-label" for="sett-model">PREFERRED AI MODEL</label>
+          <p style="font-size:0.75rem; color:#555; margin:0 0 0.4rem;">Choose the AI engine that powers your answers</p>
+          <select id="sett-model" name="preferred_model" class="sett-select">
+            {% set current_model = settings.get('preferred_model', 'groq') %}
+            {% if groq_enabled %}
+            <option value="groq"   {% if current_model == 'groq' %}selected{% endif %}>Groq Llama 3</option>
+            {% endif %}
+            {% if gemini_enabled %}
+            <option value="gemini" {% if current_model == 'gemini' %}selected{% endif %}>Gemini</option>
+            {% endif %}
+            {% if kimi_enabled %}
+            <option value="kimi"   {% if current_model == 'kimi' %}selected{% endif %}>Kimi</option>
+            {% endif %}
+            {% if nvidia_enabled %}
+            <option value="nvidia" {% if current_model == 'nvidia' %}selected{% endif %}>Mistral Large (NVIDIA)</option>
+            {% endif %}
+            {% if gemma_enabled %}
+            <option value="gemma"  {% if current_model == 'gemma' %}selected{% endif %}>Gemma 2 2B (Code Gen)</option>
+            {% endif %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Model cards -->
+      <div class="sett-model-cards">
+        {% if groq_enabled %}
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'groq' %}active{% endif %}" data-model="groq" role="button" tabindex="0" aria-label="Select Groq Llama 3">
+          <div class="sett-model-icon">⚡</div>
+          <div>
+            <div class="sett-model-name">Groq Llama 3</div>
+            <div class="sett-model-desc">Ultra-fast inference, great for quick answers and explanations</div>
+          </div>
+        </div>
+        {% endif %}
+        {% if gemini_enabled %}
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'gemini' %}active{% endif %}" data-model="gemini" role="button" tabindex="0" aria-label="Select Gemini">
+          <div class="sett-model-icon">✨</div>
+          <div>
+            <div class="sett-model-name">Gemini</div>
+            <div class="sett-model-desc">Google's advanced model, excellent for complex reasoning tasks</div>
+          </div>
+        </div>
+        {% endif %}
+        {% if kimi_enabled %}
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'kimi' %}active{% endif %}" data-model="kimi" role="button" tabindex="0" aria-label="Select Kimi">
+          <div class="sett-model-icon">🌙</div>
+          <div>
+            <div class="sett-model-name">Kimi</div>
+            <div class="sett-model-desc">Moonshot AI model, powerful long-context understanding</div>
+          </div>
+        </div>
+        {% endif %}
+        {% if nvidia_enabled %}
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'nvidia' %}active{% endif %}" data-model="nvidia" role="button" tabindex="0" aria-label="Select Mistral Large">
+          <div class="sett-model-icon">🚀</div>
+          <div>
+            <div class="sett-model-name">Mistral Large <span style="font-size:0.65rem; background:rgba(74,222,128,0.15); color:#4ade80; border:1px solid rgba(74,222,128,0.3); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">NEW</span></div>
+            <div class="sett-model-desc">NVIDIA NIM · Mistral's most powerful model, precise and insightful</div>
+          </div>
+        </div>
+        {% endif %}
+        {% if gemma_enabled %}
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'gemma' %}active{% endif %}" data-model="gemma" role="button" tabindex="0" aria-label="Select Gemma 2 2B">
+          <div class="sett-model-icon">💻</div>
+          <div>
+            <div class="sett-model-name">Gemma 2 2B <span style="font-size:0.65rem; background:rgba(74,222,128,0.15); color:#4ade80; border:1px solid rgba(74,222,128,0.3); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">NEW</span></div>
+            <div class="sett-model-desc">Google's open model, tuned for excellent code generation</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ── Appearance ── -->
+    <div class="sett-card">
+      <div class="sett-section-header">
+        <div class="sett-section-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+        </div>
+        <div>
+          <div class="sett-section-title">Appearance</div>
+          <div class="sett-section-sub">Adjust how the app looks and feels</div>
+        </div>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Dark Mode</div>
+            <div class="sett-toggle-desc">Use dark theme across the application</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Dark Mode">
+          <input type="checkbox" name="dark_mode" id="toggle-dark" {% if settings.get('theme', 'dark') == 'dark' %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Compact Messages</div>
+            <div class="sett-toggle-desc">Show chat messages in a more condensed layout</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Compact Messages">
+          <input type="checkbox" name="compact_messages" id="toggle-compact" {% if settings.get('compact_messages') %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+
+      <div class="sett-toggle-row sett-toggle-row--select">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Font Size</div>
+            <div class="sett-toggle-desc">Adjust the text size for better readability</div>
+          </div>
+        </div>
+        <select name="font_size" id="sett-font-size" class="sett-select-sm">
+          {% set fs = settings.get('font_size', 'medium') %}
+          <option value="small" {% if fs == 'small' %}selected{% endif %}>Small</option>
+          <option value="medium" {% if fs == 'medium' %}selected{% endif %}>Medium</option>
+          <option value="large" {% if fs == 'large' %}selected{% endif %}>Large</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ── Notifications ── -->
+    <div class="sett-card">
+      <div class="sett-section-header">
+        <div class="sett-section-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div>
+          <div class="sett-section-title">Notifications &amp; Reminders</div>
+          <div class="sett-section-sub">Manage how the app communicates with you</div>
+        </div>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Study Reminders</div>
+            <div class="sett-toggle-desc">Get reminded to study at your preferred time</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Study Reminders">
+          <input type="checkbox" name="study_reminders" id="toggle-reminders" {% if settings.get('study_reminders', True) %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Streak Alerts</div>
+            <div class="sett-toggle-desc">Notify me when my learning streak is at risk</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Streak Alerts">
+          <input type="checkbox" name="streak_alerts" id="toggle-streak" {% if settings.get('streak_alerts', True) %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Weekly Summary</div>
+            <div class="sett-toggle-desc">Receive a weekly report of your learning activity</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Weekly Summary">
+          <input type="checkbox" name="weekly_summary" id="toggle-weekly" {% if settings.get('weekly_summary') %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Chat Preferences ── -->
+    <div class="sett-card">
+      <div class="sett-section-header">
+        <div class="sett-section-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div>
+          <div class="sett-section-title">Chat Preferences</div>
+          <div class="sett-section-sub">Control how your chat sessions behave</div>
+        </div>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Auto-Save Chats</div>
+            <div class="sett-toggle-desc">Automatically save all conversations to history</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Auto-Save Chats">
+          <input type="checkbox" name="auto_save" id="toggle-autosave" {% if settings.get('auto_save', True) %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+
+      <div class="sett-toggle-row sett-toggle-row--select">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Response Length</div>
+            <div class="sett-toggle-desc">Preferred length of AI-generated answers</div>
+          </div>
+        </div>
+        <select name="response_length" id="sett-response-len" class="sett-select-sm">
+          {% set rl = settings.get('response_length', 'balanced') %}
+          <option value="short" {% if rl == 'short' %}selected{% endif %}>Short</option>
+          <option value="balanced" {% if rl == 'balanced' %}selected{% endif %}>Balanced</option>
+          <option value="detailed" {% if rl == 'detailed' %}selected{% endif %}>Detailed</option>
+        </select>
+      </div>
+
+      <div class="sett-toggle-row">
+        <div class="sett-toggle-left">
+          <div class="sett-toggle-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div>
+            <div class="sett-toggle-label">Show Timestamps</div>
+            <div class="sett-toggle-desc">Display time stamps on each chat message</div>
+          </div>
+        </div>
+        <label class="sett-switch" aria-label="Show Timestamps">
+          <input type="checkbox" name="show_timestamps" id="toggle-timestamps" {% if settings.get('show_timestamps') %}checked{% endif %}>
+          <span class="sett-slider"></span>
+        </label>
+      </div>
+    </div>
+
+  </form>
+
+  <!-- ── Data & Privacy ── -->
+  <div class="sett-card">
+    <div class="sett-section-header">
+      <div class="sett-section-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <div class="sett-section-title">Data &amp; Privacy</div>
+        <div class="sett-section-sub">Manage your data and privacy settings</div>
+      </div>
+    </div>
+
+    <div class="sett-data-row">
+      <form method="POST" action="{{ url_for('settings') }}" style="display:contents;" onsubmit="return confirm('Clear all chat history? This cannot be undone.')">
+        <input type="hidden" name="default_subject" value="{{ settings.get('default_subject','Math') }}">
+        <input type="hidden" name="preferred_model" value="{{ settings.get('preferred_model','groq') }}">
+        <input type="hidden" name="clear_history" value="1">
+        <button type="submit" class="sett-data-btn sett-data-btn--neutral" id="sett-clear-history">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Clear History
+        </button>
+      </form>
+      <button type="button" class="sett-data-btn sett-data-btn--neutral" id="sett-export" onclick="alert('Export feature coming soon!')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export My Data
+      </button>
+      <a href="{{ url_for('logout') }}" class="sett-data-btn sett-data-btn--danger" id="sett-delete-account" onclick="return confirm('Are you sure you want to sign out?')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="23" y2="8"/></svg>
+        Delete Account
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Model card click → updates the select dropdown
+  document.querySelectorAll('.sett-model-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.sett-model-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      const sel = document.getElementById('sett-model');
+      if (sel) sel.value = card.dataset.model;
+    });
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') card.click(); });
+  });
+
+  // Dark/Light theme toggle switch sync
+  document.addEventListener('DOMContentLoaded', () => {
+    // Fallback click listener for Save button on mobile browsers
+    const saveBtn = document.getElementById('settings-save-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', (e) => {
+        const form = document.getElementById('settings-form');
+        if (form) {
+          e.preventDefault();
+          form.submit();
+        }
+      });
+    }
+
+    const toggleDark = document.getElementById('toggle-dark');
+    if (toggleDark) {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      toggleDark.checked = (currentTheme === 'dark');
+
+      toggleDark.addEventListener('change', () => {
+        const nextTheme = toggleDark.checked ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', nextTheme);
+        if (window.updateSessionState) window.updateSessionState('theme', nextTheme);
+        
+        // Sync navbar toggleBtn if present
+        const toggleBtn = document.getElementById('theme-toggle');
+        if (toggleBtn) {
+          toggleBtn.textContent = nextTheme === 'dark' ? '☀️' : '🌙';
+          toggleBtn.setAttribute('aria-label', `Switch to ${nextTheme === 'dark' ? 'light' : 'dark'} mode`);
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  .pg-wrap { max-width: 820px; margin: 0 auto; padding: 2.5rem 1.5rem; font-family:'Inter',system-ui,sans-serif; color:#e5e5e5; }
+  .pg-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1.75rem; flex-wrap:wrap; gap:1rem; }
+  .pg-title { font-size:1.75rem; font-weight:800; color:#fff; margin:0 0 0.3rem; }
+  .pg-sub { font-size:0.85rem; color:#666; margin:0; }
+
+  .sett-save-btn { display:inline-flex; align-items:center; gap:7px; background:#2dd4bf; color:#0a0a0a; border:none; border-radius:9px; padding:0.65rem 1.25rem; font-size:0.88rem; font-weight:700; cursor:pointer; transition:background 0.18s; }
+  .sett-save-btn:hover { background:#22c5b0; }
+
+  .sett-card { background:#111; border:1px solid #1e1e1e; border-radius:14px; padding:1.5rem; margin-bottom:1rem; }
+  .sett-section-header { display:flex; align-items:flex-start; gap:10px; margin-bottom:1.25rem; }
+  .sett-section-icon { width:34px; height:34px; background:#0d2a22; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+  .sett-section-title { font-size:0.95rem; font-weight:700; color:#e5e5e5; }
+  .sett-section-sub { font-size:0.78rem; color:#666; margin-top:2px; }
+
+  .sett-two-col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+
+  .sett-select { width:100%; background:#161616; border:1px solid #2a2a2a; border-radius:8px; padding:0.65rem 0.85rem; color:#e5e5e5; font-size:0.88rem; font-family:inherit; outline:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:2rem; }
+  .sett-select:focus { border-color:#2dd4bf44; }
+
+  .sett-model-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:0.75rem; }
+  .sett-model-card { display:flex; align-items:flex-start; gap:0.75rem; background:#161616; border:1px solid #2a2a2a; border-radius:10px; padding:0.85rem; cursor:pointer; transition:all 0.18s; }
+  .sett-model-card:hover { border-color:#3a3a3a; }
+  .sett-model-card.active { background:#0d2a22; border-color:#2dd4bf44; }
+  .sett-model-icon { font-size:1.1rem; margin-top:2px; }
+  .sett-model-name { font-size:0.88rem; font-weight:600; color:#e5e5e5; margin-bottom:3px; }
+  .sett-model-desc { font-size:0.75rem; color:#666; line-height:1.4; }
+
+  .sett-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:0.85rem 0; border-top:1px solid #1e1e1e; gap:1rem; }
+  .sett-toggle-row--select { align-items:center; }
+  .sett-toggle-left { display:flex; align-items:center; gap:0.75rem; }
+  .sett-toggle-icon { width:32px; height:32px; background:#0d2a22; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sett-toggle-label { font-size:0.88rem; font-weight:500; color:#e5e5e5; }
+  .sett-toggle-desc { font-size:0.75rem; color:#666; margin-top:2px; }
+
+  /* Toggle switch */
+  .sett-switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
+  .sett-switch input { opacity:0; width:0; height:0; }
+  .sett-slider { position:absolute; cursor:pointer; inset:0; background:#2a2a2a; border-radius:999px; transition:0.2s; }
+  .sett-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#666; border-radius:50%; transition:0.2s; }
+  .sett-switch input:checked + .sett-slider { background:#2dd4bf; }
+  .sett-switch input:checked + .sett-slider::before { transform:translateX(20px); background:#fff; }
+
+  .sett-select-sm { background:#161616; border:1px solid #2a2a2a; border-radius:8px; padding:0.45rem 2rem 0.45rem 0.65rem; color:#e5e5e5; font-size:0.82rem; font-family:inherit; outline:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; flex-shrink:0; }
+
+  .sett-data-row { display:flex; flex-wrap:wrap; gap:0.75rem; border-top:1px solid #1e1e1e; padding-top:1rem; }
+  .sett-data-btn { display:inline-flex; align-items:center; gap:7px; border-radius:9px; padding:0.65rem 1.1rem; font-size:0.85rem; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.18s; border:1px solid transparent; }
+  .sett-data-btn--neutral { background:#161616; border-color:#2a2a2a; color:#aaa; }
+  .sett-data-btn--neutral:hover { background:#1e1e1e; color:#e5e5e5; }
+  .sett-data-btn--danger { background:#2a1515; border-color:#3a1a1a; color:#f87171; }
+  .sett-data-btn--danger:hover { background:#3a1515; }
+
+  /* Shared auth-field-group for settings */
+  .auth-field-group { display:flex; flex-direction:column; gap:0.3rem; }
+  .auth-label { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; color:#777; }
+
+  @media(max-width:580px) {
+    .sett-two-col { grid-template-columns:1fr; }
+    .sett-model-cards { grid-template-columns:1fr; }
+  }
+</style>
+{% endblock %}

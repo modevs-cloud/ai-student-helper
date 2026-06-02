@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Chat History — AI Student Helper{% endblock %}
+
+{% block content %}
+<div class="pg-wrap">
+
+  <!-- Page header -->
+  <div class="pg-header">
+    <div>
+      <h1 class="pg-title">Chat History</h1>
+      <p class="pg-sub">Browse and reopen your past conversations</p>
+    </div>
+    <div class="pg-header-right">
+      <div class="chat-count-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        {{ history|length }} chats
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & filter row -->
+  <div class="hist-controls">
+    <div class="hist-search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="hist-search" class="hist-search-input" placeholder="Search conversations..." aria-label="Search conversation history">
+    </div>
+  </div>
+
+  <!-- Subject filter chips -->
+  <div class="hist-filter-chips" role="group" aria-label="Filter by subject">
+    <button class="hist-chip active" data-filter="all" id="filter-all">All</button>
+    <button class="hist-chip" data-filter="Math" id="filter-math">Mathematics</button>
+    <button class="hist-chip" data-filter="Science" id="filter-science">Science</button>
+    <button class="hist-chip" data-filter="History" id="filter-history">History</button>
+    <button class="hist-chip" data-filter="English" id="filter-english">English</button>
+    <button class="hist-chip" data-filter="Computer Science" id="filter-cs">Computer Science</button>
+    <button class="hist-chip" data-filter="Other" id="filter-other">Other</button>
+  </div>
+
+  <!-- History list -->
+  <div class="hist-list" id="hist-list" role="list">
+    {% if history %}
+      {% for item in history %}
+      <article class="hist-card" role="listitem" data-subject="{{ item.subject }}" data-question="{{ item.question|lower }}" onclick="window.location.href='{{ url_for('dashboard', load_chat_id=item.chat_id) }}'" style="cursor: pointer;">
+        
+        <div class="hist-card-meta">
+          <div class="hist-subject-chip hist-chip-{{ item.subject|replace(' ','_')|lower }}">
+            {% if item.subject == 'Math' %}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {% elif item.subject == 'Science' %}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4"/><path d="M3 9v10a2 2 0 0 0 2 2h14a2 2 0 0 1-2-2V9M3 9h18"/></svg>
+            {% elif item.subject == 'History' %}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            {% elif item.subject == 'English' %}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
+            {% else %}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+            {% endif %}
+            {{ item.subject }}
+          </div>
+          <span class="hist-meta-sep">·</span>
+          <span class="hist-time">{{ item.time }}</span>
+          <span class="hist-meta-sep">·</span>
+          <span class="hist-model">{{ item.model }}</span>
+        </div>
+
+        <h3 class="hist-question-title">{{ item.question[:80] }}{% if item.question|length > 80 %}...{% endif %}</h3>
+
+        <div class="hist-qa-row">
+          <div class="hist-qa-col">
+            <div class="hist-qa-label">YOUR QUESTION</div>
+            <p class="hist-qa-text">{{ item.question[:120] }}{% if item.question|length > 120 %}...{% endif %}</p>
+          </div>
+          <div class="hist-qa-divider"></div>
+          <div class="hist-qa-col">
+            <div class="hist-qa-label">AI ANSWER</div>
+            <p class="hist-qa-text">{{ item.answer[:120] }}{% if item.answer|length > 120 %}...{% endif %}</p>
+          </div>
+        </div>
+
+      </article>
+      {% endfor %}
+    {% else %}
+      <div class="hist-empty" role="status">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" stroke-width="1.5" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <h3>No conversations yet</h3>
+        <p>Start asking questions on the <a href="{{ url_for('dashboard') }}" style="color:#2dd4bf;">Chat page</a> and they'll appear here.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+  // Search filter
+  const searchInput = document.getElementById('hist-search');
+  const cards = document.querySelectorAll('.hist-card');
+
+  function filterCards() {
+    const q = searchInput.value.toLowerCase();
+    const activeChip = document.querySelector('.hist-chip.active');
+    const subjectFilter = activeChip ? activeChip.dataset.filter : 'all';
+
+    cards.forEach(card => {
+      const matchSearch = !q || card.dataset.question.includes(q);
+      const matchSubject = subjectFilter === 'all' || card.dataset.subject === subjectFilter;
+      card.style.display = (matchSearch && matchSubject) ? '' : 'none';
+    });
+  }
+
+  searchInput.addEventListener('input', filterCards);
+
+  document.querySelectorAll('.hist-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.hist-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      filterCards();
+    });
+  });
+</script>
+
+<style>
+  .pg-wrap { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; font-family: 'Inter', system-ui, sans-serif; color: #e5e5e5; }
+  .pg-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.75rem; }
+  .pg-title { font-size: 1.75rem; font-weight: 800; color: #fff; margin: 0 0 0.3rem; }
+  .pg-sub { font-size: 0.85rem; color: #666; margin: 0; }
+  .pg-header-right { display: flex; align-items: center; gap: 0.75rem; }
+  .chat-count-badge { display:flex; align-items:center; gap:6px; background:#161616; border:1px solid #2a2a2a; border-radius:8px; padding:0.45rem 0.85rem; font-size:0.8rem; color:#888; }
+
+  .hist-controls { margin-bottom: 1rem; }
+  .hist-search-wrap { position: relative; display: flex; align-items: center; max-width: 460px; }
+  .hist-search-wrap svg { position: absolute; left: 12px; color: #555; }
+  .hist-search-input { width: 100%; background: #111; border: 1px solid #222; border-radius: 10px; padding: 0.65rem 0.75rem 0.65rem 2.4rem; color: #e5e5e5; font-size: 0.88rem; outline: none; transition: border-color 0.18s; }
+  .hist-search-input:focus { border-color: #2dd4bf44; }
+  .hist-search-input::placeholder { color: #444; }
+
+  .hist-filter-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .hist-chip { background: #111; border: 1px solid #222; border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.8rem; color: #777; cursor: pointer; transition: all 0.15s; }
+  .hist-chip:hover { border-color: #444; color: #ccc; }
+  .hist-chip.active { background: #2dd4bf15; border-color: #2dd4bf44; color: #2dd4bf; }
+
+  .hist-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .hist-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 1.25rem; transition: border-color 0.18s; }
+  .hist-card:hover { border-color: #2a2a2a; }
+
+  .hist-card-meta { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+  .hist-subject-chip { display:inline-flex; align-items:center; gap:5px; padding:0.2rem 0.6rem; border-radius:999px; font-size:0.72rem; font-weight:600; }
+  .hist-chip-math { background:#2dd4bf15; color:#2dd4bf; }
+  .hist-chip_math { background:#2dd4bf15; color:#2dd4bf; }
+  .hist-chip_science { background:#4ade8015; color:#4ade80; }
+  .hist-chip_history { background:#f59e0b15; color:#f59e0b; }
+  .hist-chip_english { background:#a78bfa15; color:#a78bfa; }
+  .hist-chip_computer_science { background:#60a5fa15; color:#60a5fa; }
+  .hist-chip_other { background:#9ca3af15; color:#9ca3af; }
+  .hist-meta-sep { color: #333; font-size: 0.8rem; }
+  .hist-time, .hist-model { font-size: 0.78rem; color: #555; }
+
+  .hist-question-title { font-size: 0.95rem; font-weight: 600; color: #e5e5e5; margin: 0 0 0.85rem; }
+
+  .hist-qa-row { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 1rem; }
+  .hist-qa-divider { background: #1e1e1e; width: 1px; }
+  .hist-qa-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: #555; margin-bottom: 0.4rem; }
+  .hist-qa-text { font-size: 0.82rem; color: #888; line-height: 1.5; margin: 0; }
+
+  .hist-empty { text-align:center; padding:4rem 1rem; color:#555; }
+  .hist-empty h3 { margin: 1rem 0 0.5rem; color: #666; font-size: 1.1rem; }
+  .hist-empty p { font-size:0.9rem; margin:0; }
+
+  /* Mobile responsiveness media queries */
+  @media (max-width: 600px) {
+    .hist-qa-row {
+      grid-template-columns: 1fr !important;
+      gap: 0.75rem !important;
+    }
+    .hist-qa-divider {
+      height: 1px !important;
+      width: 100% !important;
+    }
+  }
+</style>
+{% endblock %}

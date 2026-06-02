@@ -15,6 +15,12 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # ─── Load .env ────────────────────────────────────────────────────────────────
 load_dotenv()
 
+print(f"STARTUP DEBUG: Groq detected = {bool(os.getenv('GROQ_API_KEY'))}")
+print(f"STARTUP DEBUG: Gemini detected = {bool(os.getenv('GEMINI_API_KEY'))}")
+print(f"STARTUP DEBUG: Kimi detected = {bool(os.getenv('KIMI_API_KEY'))}")
+print(f"STARTUP DEBUG: Nvidia detected = {bool(os.getenv('NVIDIA_API_KEY'))}")
+print(f"STARTUP DEBUG: Gemma detected = {bool(os.getenv('GEMMA_API_KEY'))}")
+
 # ─── App setup ────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)

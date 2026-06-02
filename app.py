@@ -10,12 +10,14 @@ from dotenv import load_dotenv
 from functools import wraps
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
 load_dotenv()
 
 # ─── App setup ────────────────────────────────────────────────────────────────
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 

@@ -497,6 +497,14 @@ def after_login():
 
     # ── Check if we have saved data for this user ─────────────────────────────
     saved = User.query.filter_by(google_id=google_id).first()
+    if not saved and info.get("email"):
+        email_clean = info.get("email").lower().strip()
+        saved = User.query.filter_by(email=email_clean).first()
+        if saved:
+            # Link Google ID to existing account
+            saved.google_id = google_id
+            db.session.commit()
+
     if saved:
         # Returning user — restore their data, skip setup
         session["display_name"] = f"{saved.first_name} {saved.last_name}".strip()
@@ -520,18 +528,32 @@ def setup():
             display_name = f"{first} {last}".strip()
             session["display_name"] = display_name
             session["settings"] = {"default_subject": subject}
-            # Persist so they never see this page again
-            # create user in db since setup is for new google users
-            new_user = User(
-                google_id=session["user"]["id"],
-                email=session["user"]["email"],
-                first_name=first,
-                last_name=last,
-                default_subject=subject,
-                settings={"default_subject": subject}
-            )
-            db.session.add(new_user)
-            db.session.commit()
+            
+            # Check if user already exists with this email to avoid duplicate key IntegrityError
+            email_clean = session["user"]["email"].lower().strip()
+            existing_user = User.query.filter_by(email=email_clean).first()
+            
+            if existing_user:
+                # Link and update the existing user
+                existing_user.google_id = session["user"]["id"]
+                existing_user.first_name = first
+                existing_user.last_name = last
+                existing_user.default_subject = subject
+                existing_user.settings = {"default_subject": subject}
+                db.session.commit()
+            else:
+                # Create a new user
+                new_user = User(
+                    google_id=session["user"]["id"],
+                    email=email_clean,
+                    first_name=first,
+                    last_name=last,
+                    default_subject=subject,
+                    settings={"default_subject": subject}
+                )
+                db.session.add(new_user)
+                db.session.commit()
+                
             return redirect(url_for("dashboard"))
     return render_template("setup.html")
 

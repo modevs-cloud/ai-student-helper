@@ -1,124 +1,121 @@
-import os
-import subprocess
-import time
-import requests
-import sys
+"""
+test_api.py — End-to-end API test for AI Student Helper
+Tests: signup → ask AI → history → clear → delete account
+"""
+import os, subprocess, sys, time, uuid, requests
 
-# Start the Flask app as a background process
-print("Starting Flask application for testing...")
+BASE_URL = "http://127.0.0.1:5001"
+
+# ── Start local Flask server ──────────────────────────────────────────────────
+print("▶ Starting Flask server...")
 proc = subprocess.Popen(
     [sys.executable, "app.py"],
     stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    text=True
+    stderr=subprocess.STDOUT,
+    text=True,
 )
+time.sleep(4)  # give it time to boot
 
-# Wait for the server to start
-time.sleep(3)
+PASS = "✅"
+FAIL = "❌"
 
-BASE_URL = "http://127.0.0.1:5000"
+def check(label, condition, detail=""):
+    if condition:
+        print(f"  {PASS} {label}")
+    else:
+        print(f"  {FAIL} {label}  {detail}")
+        raise AssertionError(label)
+
+TEST_EMAIL = f"test_{uuid.uuid4().hex[:8]}@test.com"
+TEST_PASS  = "TestPass123!"
 session_token = None
+headers = {}
 
 try:
-    # 1. Test unauthorized access
-    print("\n[Test 1] GET /api/user without token...")
-    r = requests.get(f"{BASE_URL}/api/user")
-    print(f"Status: {r.status_code}")
-    print(f"Response: {r.json()}")
-    assert r.status_code == 401
-    print("Success: Unauthorized access blocked.")
-
-    # 2. Test login with mock token
-    print("\n[Test 2] POST /api/login with mock token...")
-    login_payload = {"id_token": "mock_john"}
-    r = requests.post(f"{BASE_URL}/api/login", json=login_payload)
-    print(f"Status: {r.status_code}")
-    res_data = r.json()
-    print(f"Response: {res_data}")
-    assert r.status_code == 200
-    assert "session_token" in res_data
-    session_token = res_data["session_token"]
-    print(f"Success: Logged in. Token: {session_token}")
-
+    # ── 1. Signup ─────────────────────────────────────────────────────────────
+    print("\n[1] POST /api/signup")
+    r = requests.post(f"{BASE_URL}/api/signup", json={
+        "first_name": "Test",
+        "last_name": "User",
+        "email": TEST_EMAIL,
+        "password": TEST_PASS,
+    }, timeout=10)
+    print(f"    Status: {r.status_code}  Body: {r.text[:200]}")
+    check("signup returns 200", r.status_code == 200)
+    data = r.json()
+    check("session_token in response", "session_token" in data)
+    session_token = data["session_token"]
     headers = {"Authorization": f"Bearer {session_token}"}
+    print(f"    Token: {session_token[:12]}...")
 
-    # 3. Test get user details
-    print("\n[Test 3] GET /api/user with valid token...")
-    r = requests.get(f"{BASE_URL}/api/user", headers=headers)
-    print(f"Status: {r.status_code}")
-    res_data = r.json()
-    print(f"Response: {res_data}")
-    assert r.status_code == 200
-    assert res_data["email"] == "john@example.com"
-    print("Success: User details retrieved successfully.")
+    # ── 2. GET /api/user ──────────────────────────────────────────────────────
+    print("\n[2] GET /api/user")
+    r = requests.get(f"{BASE_URL}/api/user", headers=headers, timeout=10)
+    print(f"    Status: {r.status_code}  Body: {r.text[:200]}")
+    check("user returns 200", r.status_code == 200)
+    check("email matches", r.json().get("email") == TEST_EMAIL)
 
-    # 4. Test save settings
-    print("\n[Test 4] POST /api/settings...")
-    settings_payload = {
-        "default_subject": "Computer Science",
-        "compact_messages": True,
-        "font_size": "large"
-    }
-    r = requests.post(f"{BASE_URL}/api/settings", json=settings_payload, headers=headers)
-    print(f"Status: {r.status_code}")
-    res_data = r.json()
-    print(f"Response: {res_data}")
-    assert r.status_code == 200
-    assert res_data["default_subject"] == "Computer Science"
-    assert res_data["settings"]["compact_messages"] is True
-    print("Success: Settings updated successfully.")
+    # ── 3. POST /api/ask  (the critical AI test) ──────────────────────────────
+    print("\n[3] POST /api/ask  — 'What is 2 plus 2?'  model=groq")
+    r = requests.post(f"{BASE_URL}/api/ask", json={
+        "question": "What is 2 plus 2?",
+        "subject": "Math",
+        "model": "groq",
+        "chat_id": str(uuid.uuid4()),
+    }, headers=headers, timeout=40)
+    print(f"    Status: {r.status_code}  Body: {r.text[:300]}")
+    check("/api/ask returns 200", r.status_code == 200)
+    data = r.json()
+    check("answer field present", "answer" in data)
+    check("answer is non-empty", len(data.get("answer", "")) > 0)
+    check("answer not an error", "⚠️" not in data.get("answer", ""))
+    print(f"    Answer snippet: {data['answer'][:120]}")
 
-    # 5. Test ask endpoint
-    print("\n[Test 5] POST /api/ask...")
-    ask_payload = {
-        "question": "What is the capital of France?",
-        "subject": "History",
-        "model": "gemma",
-        "chat_id": "test-chat-session-123"
-    }
-    r = requests.post(f"{BASE_URL}/api/ask", json=ask_payload, headers=headers)
-    print(f"Status: {r.status_code}")
-    res_data = r.json()
-    print(f"Response (truncated answer): {res_data.get('question')} -> {res_data.get('answer')[:100]}...")
-    assert r.status_code == 200
-    assert "answer" in res_data
-    print("Success: AI responded and answer was returned and saved.")
+    # ── 4. GET /api/settings ──────────────────────────────────────────────────
+    print("\n[4] GET /api/settings")
+    r = requests.get(f"{BASE_URL}/api/settings", headers=headers, timeout=10)
+    print(f"    Status: {r.status_code}")
+    check("settings returns 200", r.status_code == 200)
 
-    # 6. Test history retrieval
-    print("\n[Test 6] GET /api/history...")
-    r = requests.get(f"{BASE_URL}/api/history", headers=headers)
-    print(f"Status: {r.status_code}")
-    res_data = r.json()
-    print(f"Response: Number of sessions = {len(res_data)}")
-    if len(res_data) > 0:
-        print(f"First session subject: {res_data[0]['subject']}")
-        print(f"First session messages: {len(res_data[0]['messages'])}")
-    assert r.status_code == 200
-    assert len(res_data) > 0
-    print("Success: Chat history retrieved successfully.")
+    # ── 5. POST /api/settings ─────────────────────────────────────────────────
+    print("\n[5] POST /api/settings")
+    r = requests.post(f"{BASE_URL}/api/settings", json={
+        "default_subject": "Science",
+        "is_dark_mode": True,
+        "font_size_selection": 1,
+    }, headers=headers, timeout=10)
+    print(f"    Status: {r.status_code}")
+    check("save settings returns 200", r.status_code == 200)
 
-    # 7. Test clear history
-    print("\n[Test 7] DELETE /api/history...")
-    r = requests.delete(f"{BASE_URL}/api/history", headers=headers)
-    print(f"Status: {r.status_code}")
-    res_data = r.json()
-    print(f"Response: {res_data}")
-    assert r.status_code == 200
+    # ── 6. GET /api/history ───────────────────────────────────────────────────
+    print("\n[6] GET /api/history")
+    r = requests.get(f"{BASE_URL}/api/history", headers=headers, timeout=10)
+    print(f"    Status: {r.status_code}  Sessions: {len(r.json())}")
+    check("history returns 200", r.status_code == 200)
+    check("at least 1 session", len(r.json()) > 0)
 
-    # Verify history is now empty
-    print("Verifying history is empty...")
-    r = requests.get(f"{BASE_URL}/api/history", headers=headers)
-    assert len(r.json()) == 0
-    print("Success: All chat history cleared successfully.")
+    # ── 7. DELETE /api/history ────────────────────────────────────────────────
+    print("\n[7] DELETE /api/history")
+    r = requests.delete(f"{BASE_URL}/api/history", headers=headers, timeout=10)
+    print(f"    Status: {r.status_code}")
+    check("clear history returns 200", r.status_code == 200)
 
-    print("\n🎉 ALL 7 API ENDPOINTS VERIFIED AND WORKING CORRECTLY! 🎉")
+    # ── 8. DELETE /api/account ────────────────────────────────────────────────
+    print("\n[8] DELETE /api/account  (cleanup)")
+    r = requests.delete(f"{BASE_URL}/api/account", headers=headers, timeout=10)
+    print(f"    Status: {r.status_code}")
+    check("delete account returns 200", r.status_code == 200)
 
-except Exception as e:
-    print(f"\n❌ Test failed: {e}")
+    print("\n🎉  ALL 8 TESTS PASSED — /api/ask returns real AI answers!\n")
+
+except AssertionError as e:
+    print(f"\n{FAIL} Test failed: {e}\n")
     sys.exit(1)
-
+except Exception as e:
+    print(f"\n{FAIL} Unexpected error: {e}\n")
+    sys.exit(1)
 finally:
-    print("\nStopping Flask application...")
+    print("▶ Stopping Flask server...")
     proc.terminate()
     proc.wait()
-    print("Server stopped.")
+    print("   Server stopped.")

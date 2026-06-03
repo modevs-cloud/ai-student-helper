@@ -278,7 +278,7 @@ def ask_groq_vision(messages, image_b64, mime_type):
                 "messages": vision_messages,
                 "max_tokens": 4000,
             },
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["choices"][0]["message"]["content"].strip()
@@ -320,7 +320,7 @@ def ask_gemini_vision(messages, image_b64, mime_type):
         resp = req.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
             json={"contents": contents},
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -334,7 +334,7 @@ def ask_gemini_vision(messages, image_b64, mime_type):
 def ask_groq(messages):
     """Call Groq API (Llama 3) with a messages list. Returns answer string or None."""
     key = os.getenv("GROQ_API_KEY", "").strip()
-    print(f"DEBUG: ask_groq called. Key length: {len(key)}")
+    print(f"DEBUG: ask_groq called. Key present: {bool(key)}, key prefix: {key[:8] if key else 'MISSING'}")
     if not key:
         return None
     try:
@@ -346,12 +346,12 @@ def ask_groq(messages):
                 "messages": messages,
                 "max_tokens": 4000,
             },
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["choices"][0]["message"]["content"].strip()
         else:
-            print(f"Groq API error {resp.status_code}: {resp.text}")
+            print(f"Groq API error {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         print(f"Groq error: {e}")
     return None
@@ -360,12 +360,10 @@ def ask_groq(messages):
 def ask_gemini(messages):
     """Call Gemini API with a messages list. Converts to Gemini multi-turn format."""
     key = os.getenv("GEMINI_API_KEY", "").strip()
-    print(f"DEBUG: ask_gemini called. Key length: {len(key)}")
+    print(f"DEBUG: ask_gemini called. Key present: {bool(key)}, key prefix: {key[:8] if key else 'MISSING'}")
     if not key:
         return None
     try:
-        # Convert OpenAI-style messages to Gemini contents format
-        # System message becomes first user turn with special prefix
         contents = []
         system_text = ""
         for msg in messages:
@@ -374,18 +372,18 @@ def ask_gemini(messages):
             elif msg["role"] == "user":
                 text = (system_text + "\n\n" + msg["content"]) if system_text else msg["content"]
                 contents.append({"role": "user", "parts": [{"text": text}]})
-                system_text = ""  # Only prepend once
+                system_text = ""
             elif msg["role"] == "assistant":
                 contents.append({"role": "model", "parts": [{"text": msg["content"]}]})
         resp = req.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
             json={"contents": contents},
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
         else:
-            print(f"Gemini API error {resp.status_code}: {resp.text}")
+            print(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         print(f"Gemini error: {e}")
     return None
@@ -405,7 +403,7 @@ def ask_kimi(messages):
                 "messages": messages,
                 "max_tokens": 4000,
             },
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["choices"][0]["message"]["content"].strip()
@@ -417,7 +415,7 @@ def ask_kimi(messages):
 def ask_nvidia(messages):
     """Call NVIDIA NIM API (Mistral Large) with a messages list. Returns answer string or None."""
     key = os.getenv("NVIDIA_API_KEY", "").strip()
-    print(f"DEBUG: ask_nvidia called. Key length: {len(key)}")
+    print(f"DEBUG: ask_nvidia called. Key present: {bool(key)}")
     if not key:
         return None
     try:
@@ -432,7 +430,7 @@ def ask_nvidia(messages):
                 "top_p": 1.00,
                 "stream": False,
             },
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["choices"][0]["message"]["content"].strip()
@@ -458,7 +456,7 @@ def ask_gemma(messages):
                 "top_p": 1.00,
                 "stream": False,
             },
-            timeout=8,
+            timeout=45,
         )
         if resp.ok:
             return resp.json()["choices"][0]["message"]["content"].strip()
@@ -1285,49 +1283,104 @@ def api_get_history():
 @app.route("/api/ask", methods=["POST"])
 @api_login_required
 def api_ask():
+    import threading
+
     user = g.current_user
     data = request.get_json() or {}
-    
+
     question = data.get("question", "").strip()
-    subject = data.get("subject", "Math")
-    model = data.get("model", "groq")
-    chat_id = data.get("chat_id")
-    
+    subject  = data.get("subject", "Math")
+    model    = data.get("model", "groq")
+    chat_id  = data.get("chat_id")
+
+    print(f"DEBUG /api/ask: user={user.email}, model={model}, subject={subject}, q={question[:60]}")
+    print(f"DEBUG /api/ask: GROQ_KEY={bool(os.getenv('GROQ_API_KEY'))}, GEMINI_KEY={bool(os.getenv('GEMINI_API_KEY'))}")
+
     if not question:
         return jsonify({"error": "Question is required."}), 400
-        
+
     if not chat_id:
         chat_id = str(uuid.uuid4())
-        
-    # Get active session messages for memory
-    chat_history = []
-    if chat_id:
-        msgs = Message.query.filter_by(user_id=user.id, chat_id=chat_id).order_by(Message.created_at.asc()).all()
+
+    # ── Pull conversation history safely ──────────────────────────────────────
+    try:
+        msgs = Message.query.filter_by(
+            user_id=user.id, chat_id=chat_id
+        ).order_by(Message.created_at.asc()).all()
         chat_history = [{"question": m.question, "answer": m.answer} for m in msgs]
-        
-    answer = ask_ai(question, subject, model, chat_history=chat_history)
-    
-    # Save to database
-    msg = Message(
-        user_id=user.id,
-        chat_id=chat_id,
-        subject=subject,
-        question=question,
-        answer=answer,
-        model_used=model,
-        is_active=True
-    )
-    db.session.add(msg)
-    db.session.commit()
-    
+    except Exception as e:
+        print(f"WARN /api/ask history fetch error (non-fatal): {e}")
+        chat_history = []
+
+    # ── Run AI in a thread with 60s hard wall-clock limit ────────────────────
+    result_holder = {"answer": None, "error": None}
+
+    def run_ai():
+        try:
+            result_holder["answer"] = ask_ai(
+                question, subject, model, chat_history=chat_history
+            )
+        except Exception as exc:
+            result_holder["error"] = str(exc)
+            print(f"ERROR in AI thread: {exc}")
+
+    thread = threading.Thread(target=run_ai, daemon=True)
+    thread.start()
+    thread.join(timeout=60)
+
+    if thread.is_alive():
+        print("ERROR /api/ask: AI thread timed out after 60s")
+        return jsonify({
+            "question": question,
+            "answer": "⏱️ The AI took too long to respond. Please try again.",
+            "chat_id": chat_id, "subject": subject, "model": model,
+            "time": datetime.utcnow().strftime("%b %d, %Y %I:%M %p"),
+            "error": "timeout"
+        }), 504
+
+    if result_holder["error"]:
+        return jsonify({
+            "question": question,
+            "answer": "⚠️ The AI is temporarily unavailable. Please try again in a moment.",
+            "chat_id": chat_id, "subject": subject, "model": model,
+            "time": datetime.utcnow().strftime("%b %d, %Y %I:%M %p"),
+            "error": result_holder["error"]
+        }), 500
+
+    answer = result_holder["answer"]
+
+    # Friendly fallback if all models returned empty
+    if not answer or not answer.strip():
+        answer = (
+            "⚠️ The AI is temporarily unavailable — all models are currently "
+            "unreachable. Please try again in a few moments."
+        )
+
+    print(f"DEBUG /api/ask: answer length={len(answer)}")
+
+    # ── Save to database ──────────────────────────────────────────────────────
+    try:
+        msg = Message(
+            user_id=user.id, chat_id=chat_id, subject=subject,
+            question=question, answer=answer, model_used=model, is_active=True
+        )
+        db.session.add(msg)
+        db.session.commit()
+        time_str = msg.created_at.strftime("%b %d, %Y %I:%M %p")
+    except Exception as e:
+        print(f"ERROR /api/ask saving to DB: {e}")
+        time_str = datetime.utcnow().strftime("%b %d, %Y %I:%M %p")
+
     return jsonify({
         "question": question,
-        "answer": answer,
-        "chat_id": chat_id,
-        "subject": subject,
-        "model": model,
-        "time": msg.created_at.strftime("%b %d, %Y %I:%M %p")
+        "answer":   answer,
+        "chat_id":  chat_id,
+        "subject":  subject,
+        "model":    model,
+        "time":     time_str,
     })
+
+
 
 
 @app.route("/api/settings", methods=["GET"])

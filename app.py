@@ -172,7 +172,7 @@ def get_session_history():
             "question": m.question,
             "answer": m.answer,
             "model": m.model_used.capitalize() if m.model_used else "Unknown",
-            "time": m.created_at.strftime("%b %d, %Y %I:%M %p"),
+            "time": m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now",
             "image_url": m.image_url
         })
         
@@ -201,7 +201,7 @@ def get_session_active_chat():
         "question": m.question,
         "answer": m.answer,
         "model": m.model_used.capitalize() if m.model_used else "Unknown",
-        "time": m.created_at.strftime("%b %d, %Y %I:%M %p"),
+        "time": m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now",
         "image_url": m.image_url
     } for m in msgs]
 
@@ -876,7 +876,7 @@ def dashboard():
                 return jsonify({"error": error}), 400
             
             time_str = "Just now"
-            if u and 'msg' in locals():
+            if u and 'msg' in locals() and msg.created_at:
                 time_str = msg.created_at.strftime("%b %d, %Y %I:%M %p")
                 
             from flask import jsonify
@@ -1267,12 +1267,12 @@ def api_get_history():
                 "id": c_id,
                 "subject": m.subject or "Math",
                 "modelName": m.model_used or "groq",
-                "dateString": m.created_at.strftime("%b %d, %Y"),
+                "dateString": m.created_at.strftime("%b %d, %Y") if m.created_at else "Today",
                 "messages": [],
                 "last_activity": m.created_at
             }
             
-        time_str = m.created_at.strftime("%b %d, %Y %I:%M %p")
+        time_str = m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now"
         
         # User turn
         user_msg_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"user_{m.id}"))
@@ -1391,7 +1391,7 @@ def api_ask():
         )
         db.session.add(msg)
         db.session.commit()
-        time_str = msg.created_at.strftime("%b %d, %Y %I:%M %p")
+        time_str = msg.created_at.strftime("%b %d, %Y %I:%M %p") if msg.created_at else datetime.utcnow().strftime("%b %d, %Y %I:%M %p")
     except Exception as e:
         print(f"ERROR /api/ask saving to DB: {e}")
         time_str = datetime.utcnow().strftime("%b %d, %Y %I:%M %p")

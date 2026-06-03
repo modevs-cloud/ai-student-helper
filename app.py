@@ -797,53 +797,79 @@ def dashboard():
             error = "Please type a question before clicking Get Help."
         else:
             # Handle optional image upload
-            image_b64 = None
+            image_b64  = None
             image_mime = None
-            image_url = None
+            image_url  = None
             image_file = request.files.get("image")
             if image_file and image_file.filename:
                 try:
                     image_bytes = image_file.read()
-                    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-                    image_mime = image_file.content_type or "image/jpeg"
-                    # Save for display in chat
+                    image_b64   = base64.b64encode(image_bytes).decode("utf-8")
+                    image_mime  = image_file.content_type or "image/jpeg"
                     image_file.seek(0)
                     image_url = save_uploaded_image(image_file, session["user"]["id"])
                 except Exception as e:
                     print(f"Image upload error: {e}")
 
-            # Pass current active_chat as history so the AI has memory
-            current_chat = get_session_active_chat()
-            answer = ask_ai(question, subject, model,
-                            chat_history=current_chat,
-                            image_b64=image_b64, image_mime=image_mime)
+            try:
+                import threading as _threading
 
-            # Ensure we have an active chat ID
-            if "active_chat_id" not in session:
-                session["active_chat_id"] = str(uuid.uuid4())
+                # Pass current active_chat as history so the AI has memory
+                current_chat = get_session_active_chat()
 
-            # Save to database
-            u = get_user_record()
-            if u:
-                msg = Message(
-                    user_id=u.id,
-                    chat_id=session["active_chat_id"],
-                    subject=subject,
-                    question=question,
-                    answer=answer,
-                    model_used=model,
-                    image_url=image_url,
-                    is_active=True
+                # Run ask_ai in a thread with a 60s hard timeout
+                _result = {"answer": None}
+                def _run():
+                    _result["answer"] = ask_ai(
+                        question, subject, model,
+                        chat_history=current_chat,
+                        image_b64=image_b64, image_mime=image_mime
+                    )
+                _t = _threading.Thread(target=_run, daemon=True)
+                _t.start()
+                _t.join(timeout=60)
+
+                if _t.is_alive() or not _result["answer"]:
+                    answer = (
+                        "⚠️ The AI is temporarily unavailable or took too long to respond. "
+                        "Please try again in a moment."
+                    )
+                else:
+                    answer = _result["answer"]
+
+                # Ensure we have an active chat ID
+                if "active_chat_id" not in session:
+                    session["active_chat_id"] = str(uuid.uuid4())
+
+                # Save to database
+                u = get_user_record()
+                if u:
+                    msg = Message(
+                        user_id=u.id,
+                        chat_id=session["active_chat_id"],
+                        subject=subject,
+                        question=question,
+                        answer=answer,
+                        model_used=model,
+                        image_url=image_url,
+                        is_active=True
+                    )
+                    db.session.add(msg)
+                    db.session.commit()
+                session.modified = True
+                _persist_user()
+                is_new_answer = True
+
+            except Exception as _exc:
+                print(f"ERROR dashboard ask_ai: {_exc}")
+                import traceback
+                traceback.print_exc()
+                answer = (
+                    "⚠️ An error occurred while getting an AI response. "
+                    "Please try again."
                 )
-                db.session.add(msg)
-                db.session.commit()
-            session.modified = True
-
-            # Persist updated history
-            _persist_user()
-            
-            # Set flag for typewriter animation
-            is_new_answer = True
+                error = None   # show the answer, not a form error
+                is_new_answer = True
 
         if request.headers.get("X-Requested-With") == "XMLHttpRequest" or "application/json" in request.headers.get("Accept", ""):
             if error:

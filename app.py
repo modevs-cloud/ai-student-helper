@@ -4,13 +4,19 @@ import hashlib
 import base64
 import uuid
 import requests as req
-from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify
+from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify, g
 from flask_dance.contrib.google import make_google_blueprint, google
 from dotenv import load_dotenv
 from functools import wraps
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+# ─── CORS setup ───────────────────────────────────────────────────────────────
+try:
+    from flask_cors import CORS
+except ImportError:
+    CORS = None
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
 load_dotenv()
@@ -20,6 +26,21 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+# Enable CORS for API support
+if CORS:
+    CORS(app, origins=["*", "mo-dev.AI-Student-Helper", "app://mo-dev.AI-Student-Helper"])
+else:
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get("Origin")
+        if origin in ["mo-dev.AI-Student-Helper", "app://mo-dev.AI-Student-Helper"]:
+            response.headers.add("Access-Control-Allow-Origin", origin)
+        else:
+            response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Session-Token")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        return response
 
 # Logging setup to check environment variables on Render
 app.logger.info(f"STARTUP DEBUG: Groq detected = {bool(os.getenv('GROQ_API_KEY'))}")
@@ -42,6 +63,17 @@ db = SQLAlchemy(app)
 
 with app.app_context():
     db.create_all()
+    # Migration helper to add session_token column to user table if not present
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        columns = [c["name"] for c in inspector.get_columns("user")]
+        if "session_token" not in columns:
+            db.session.execute(text("ALTER TABLE \"user\" ADD COLUMN session_token VARCHAR(255) UNIQUE;"))
+            db.session.commit()
+            print("Startup Migration: Added session_token column to user table.")
+    except Exception as e:
+        print(f"Startup Migration info/error: {e}")
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -52,6 +84,7 @@ class User(db.Model):
     last_name = db.Column(db.String(255))
     default_subject = db.Column(db.String(100), default="Math")
     settings = db.Column(db.JSON, nullable=True)
+    session_token = db.Column(db.String(255), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     messages = db.relationship('Message', backref='user', lazy=True)
 
@@ -191,6 +224,28 @@ def login_required(f):
             
         return f(*args, **kwargs)
     return decorated_function
+
+def api_login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+            
+        if not token:
+            token = request.headers.get("X-Session-Token")
+            
+        if not token:
+            return jsonify({"error": "Authentication required. Missing token."}), 401
+            
+        user = User.query.filter_by(session_token=token).first()
+        if not user:
+            return jsonify({"error": "Invalid or expired session token."}), 401
+            
+        g.current_user = user
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ─── AI helper ────────────────────────────────────────────────────────────────
@@ -963,6 +1018,257 @@ def _persist_user():
             else:
                 u.last_name = ""
         db.session.commit()
+
+
+# ─── REST API Endpoints ────────────────────────────────────────────────────────
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json() or {}
+    id_token = data.get("id_token") or data.get("token")
+    
+    if not id_token:
+        return jsonify({"error": "Google token is required."}), 400
+        
+    email = None
+    google_id = None
+    first_name = ""
+    last_name = ""
+    
+    # Check for Mock/Test Token
+    if id_token.startswith("mock_") or id_token == "test_token":
+        suffix = id_token[5:] if id_token.startswith("mock_") else "test"
+        email = f"{suffix}@example.com".lower()
+        google_id = f"mock_{suffix}"
+        first_name = suffix.capitalize()
+        last_name = "User"
+    else:
+        try:
+            resp = req.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}", timeout=8)
+            if resp.ok:
+                info = resp.json()
+                email = info.get("email")
+                google_id = str(info.get("id") or info.get("sub"))
+                
+                # Extract user's name details
+                full_name = info.get("name", "").strip()
+                if full_name:
+                    parts = full_name.split(" ", 1)
+                    first_name = parts[0]
+                    last_name = parts[1] if len(parts) > 1 else ""
+                else:
+                    first_name = info.get("given_name", "")
+                    last_name = info.get("family_name", "")
+            else:
+                try:
+                    err_msg = resp.json().get("error_description") or resp.json().get("error") or resp.text
+                except:
+                    err_msg = resp.text
+                return jsonify({"error": f"Invalid or expired Google token: {err_msg}"}), 401
+        except Exception as e:
+            return jsonify({"error": f"Failed to verify Google token: {str(e)}"}), 500
+            
+    if not email:
+        return jsonify({"error": "Failed to retrieve email from Google token."}), 400
+        
+    email_clean = email.lower().strip()
+    
+    # Find or create user
+    user = User.query.filter_by(google_id=google_id).first()
+    if not user:
+        user = User.query.filter_by(email=email_clean).first()
+        if user:
+            user.google_id = google_id
+            db.session.commit()
+            
+    if not user:
+        user = User(
+            google_id=google_id,
+            email=email_clean,
+            first_name=first_name,
+            last_name=last_name,
+            default_subject="Math",
+            settings={"default_subject": "Math"}
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+    # Generate/refresh session token
+    session_token = uuid.uuid4().hex
+    user.session_token = session_token
+    db.session.commit()
+    
+    total_questions = Message.query.filter_by(user_id=user.id).count()
+    
+    return jsonify({
+        "session_token": session_token,
+        "user": {
+            "id": user.id,
+            "google_id": user.google_id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": f"{user.first_name} {user.last_name}".strip(),
+            "default_subject": user.default_subject or "Math",
+            "total_questions": total_questions,
+            "settings": user.settings or {}
+        }
+    })
+
+
+@app.route("/api/user", methods=["GET"])
+@api_login_required
+def api_get_user():
+    user = g.current_user
+    total_questions = Message.query.filter_by(user_id=user.id).count()
+    return jsonify({
+        "id": user.id,
+        "google_id": user.google_id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "name": f"{user.first_name} {user.last_name}".strip(),
+        "default_subject": user.default_subject or "Math",
+        "total_questions": total_questions,
+        "settings": user.settings or {}
+    })
+
+
+@app.route("/api/history", methods=["GET"])
+@api_login_required
+def api_get_history():
+    user = g.current_user
+    messages = Message.query.filter_by(user_id=user.id).order_by(Message.created_at.asc()).all()
+    
+    sessions_dict = {}
+    for m in messages:
+        c_id = m.chat_id or "default_session"
+        if c_id not in sessions_dict:
+            sessions_dict[c_id] = {
+                "id": c_id,
+                "subject": m.subject or "Math",
+                "modelName": m.model_used or "groq",
+                "dateString": m.created_at.strftime("%b %d, %Y"),
+                "messages": [],
+                "last_activity": m.created_at
+            }
+            
+        time_str = m.created_at.strftime("%b %d, %Y %I:%M %p")
+        
+        # User turn
+        user_msg_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"user_{m.id}"))
+        sessions_dict[c_id]["messages"].append({
+            "id": user_msg_id,
+            "text": m.question,
+            "isUser": True,
+            "time": time_str,
+            "subject": m.subject or "Math",
+            "model": m.model_used or "groq"
+        })
+        
+        # AI turn
+        ai_msg_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"ai_{m.id}"))
+        sessions_dict[c_id]["messages"].append({
+            "id": ai_msg_id,
+            "text": m.answer,
+            "isUser": False,
+            "time": time_str,
+            "subject": m.subject or "Math",
+            "model": m.model_used or "groq"
+        })
+        
+        sessions_dict[c_id]["last_activity"] = m.created_at
+        
+    sorted_sessions = sorted(sessions_dict.values(), key=lambda x: x["last_activity"], reverse=True)
+    for s in sorted_sessions:
+        s.pop("last_activity", None)
+        
+    return jsonify(sorted_sessions)
+
+
+@app.route("/api/ask", methods=["POST"])
+@api_login_required
+def api_ask():
+    user = g.current_user
+    data = request.get_json() or {}
+    
+    question = data.get("question", "").strip()
+    subject = data.get("subject", "Math")
+    model = data.get("model", "groq")
+    chat_id = data.get("chat_id")
+    
+    if not question:
+        return jsonify({"error": "Question is required."}), 400
+        
+    if not chat_id:
+        chat_id = str(uuid.uuid4())
+        
+    # Get active session messages for memory
+    chat_history = []
+    if chat_id:
+        msgs = Message.query.filter_by(user_id=user.id, chat_id=chat_id).order_by(Message.created_at.asc()).all()
+        chat_history = [{"question": m.question, "answer": m.answer} for m in msgs]
+        
+    answer = ask_ai(question, subject, model, chat_history=chat_history)
+    
+    # Save to database
+    msg = Message(
+        user_id=user.id,
+        chat_id=chat_id,
+        subject=subject,
+        question=question,
+        answer=answer,
+        model_used=model,
+        is_active=True
+    )
+    db.session.add(msg)
+    db.session.commit()
+    
+    return jsonify({
+        "question": question,
+        "answer": answer,
+        "chat_id": chat_id,
+        "subject": subject,
+        "model": model,
+        "time": msg.created_at.strftime("%b %d, %Y %I:%M %p")
+    })
+
+
+@app.route("/api/settings", methods=["POST"])
+@api_login_required
+def api_save_settings():
+    user = g.current_user
+    data = request.get_json() or {}
+    
+    if "default_subject" in data:
+        user.default_subject = data["default_subject"]
+        
+    settings = dict(user.settings or {})
+    for key, value in data.items():
+        if key != "session_token":
+            settings[key] = value
+            
+    user.settings = settings
+    db.session.commit()
+    
+    return jsonify({
+        "status": "success",
+        "message": "Settings saved successfully.",
+        "default_subject": user.default_subject,
+        "settings": user.settings
+    })
+
+
+@app.route("/api/history", methods=["DELETE"])
+@api_login_required
+def api_delete_history():
+    user = g.current_user
+    Message.query.filter_by(user_id=user.id).delete()
+    db.session.commit()
+    return jsonify({
+        "status": "success",
+        "message": "All chat history cleared permanently."
+    })
 
 
 # ─── Run ──────────────────────────────────────────────────────────────────────

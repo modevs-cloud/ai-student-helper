@@ -1,158 +1,69 @@
-# AI Student Helper 🎓
+AI Student Helper
+A full stack web application that gives students instant AI-powered academic help on any subject. Students sign in with Google, ask any question, and get a clear explanation from one of five free AI models — like having a personal tutor available anytime.
+Live Demo: https://ai-student-helper-qsjg.onrender.com
 
-A full-stack web application that gives students instant AI-powered academic help on any subject. Students sign in with Google, ask any question, and get clear explanations from one of five free AI models — like having a personal tutor available on demand.
+What It Does
+Students use Google to sign in, once with their name, and are taken to a chat-like dashboard where the student can pose questions to academics that span different fields such as Math, Science, Computer Science, History and English. All of these conversations are stored in a personal history, and students can alternate between 5 AI models according to their needs.
 
-**Live Demo:** [https://ai-student-helper-qsjg.onrender.com](https://ai-student-helper-qsjg.onrender.com)
+Features
+No password required to Google In. A chat-type dashboard, whose messages are displayed on the right and questions are answered on the left by AI. Options of five AI models such as Groq Llama 3, Google Gemini, Kimi, Mistral Large, and Gamma 2B. Fallback logic that will be activated automatically in case of a failure in the primary model, falling back to a back-up model. Debrief chat Group activities as in ChatGPT so that students can revisit and continue previous chats. A profile page with name, email, a total amount of the questions asked, and with subject breakage. A settings page which contains a dark and light theme option and clear history. Mobile-friendly full responsive eCommerce.
 
----
+Tech Stack
+Frontend: HTML5, CSS3, Vanilla JavaScript, Jinja2 templating
+Backend: Python with Flask for routing and session management
+Database: PostgreSQL on Neon Cloud using Flask-SQLAlchemy
+Authentication: Google OAuth 2.0 using Flask-Dance
+AI Models: Groq API (Llama 3), Google Gemini API, Kimi API, NVIDIA NIM API (Mistral Large and Gemma 2B)
+Deployment: Gunicorn on Render with automatic GitHub deploys
 
-## 📖 What It Does
-
-Students authenticate via Google Sign-in, enter their profile preferences once, and are taken to a chat-like dashboard. Here, students can ask academic questions spanning fields such as **Mathematics, Science, Computer Science, History, and English**. 
-
-All conversations are stored in a personal history log, and students can dynamically switch between 5 different AI models to suit their learning needs.
-
----
-
-## ✨ Features
-
-*   **Google OAuth 2.0:** Secure login with one click (no passwords required).
-*   **AI Chat Dashboard:** A clean user interface where responses are presented on the left and input controls sit on the right.
-*   **Multi-Model Choice:** Alternate between 5 distinct models:
-    *   *Groq Llama 3* (Fast & Free)
-    *   *Google Gemini* (Advanced Reasoning)
-    *   *Kimi* (Long Context)
-    *   *Mistral Large* (Powerful & Precise)
-    *   *Gemma 2B* (Code Generation)
-*   **Automatic Fallback Routing:** If the primary choice (e.g., Groq) is rate-limited or offline, the app automatically fails over to a backup model (e.g., Gemini) to guarantee a continuous chat experience.
-*   **Chat History Grouping:** Groups questions and answers into continuous threads (like ChatGPT) so students can revisit, review, and resume past study sessions.
-*   **User Profiles & Metrics:** Shows your name, email, account age, and total questions asked with subject breakdowns.
-*   **Custom Settings:** Configure default subjects, switch between light and dark themes, or clear your question history.
-*   **Fully Responsive Mobile Design:** Beautifully optimized layout across mobile, tablet, and desktop screens.
-
----
-
-## 🛠️ Tech Stack
-
-*   **Frontend:** HTML5, CSS3 (Modern Dark Theme), Vanilla JavaScript, Jinja2 Templating
-*   **Backend:** Python with Flask (Routing, Session management, and API handler)
-*   **Database:** PostgreSQL hosted on **Neon Cloud** utilizing **Flask-SQLAlchemy**
-*   **Authentication:** Google Sign-In via **Flask-Dance**
-*   **AI Services:** Groq API (Llama 3), Google Gemini API, Kimi API, NVIDIA NIM API (Mistral Large & Gemma 2B)
-*   **Deployment:** Gunicorn web server deployed on **Render** with automatic GitHub CD (Continuous Deployment)
-
----
-
-## 🗄️ Database Design
-
-The application connects to a remote PostgreSQL database on Neon Cloud and runs two primary tables:
-
-### 1. `user`
-Stores student accounts and preferences.
-*   `id` (Primary Key)
-*   `google_id` (Google OAuth unique ID)
-*   `email` (Unique student email)
-*   `first_name` & `last_name`
-*   `default_subject` (Favorite subject preference)
-*   `settings` (Theme & session configs)
-*   `created_at` (Timestamp of sign-up)
-
-### 2. `message`
-Stores conversational entries and allows threads to be grouped and resumed.
-*   `id` (Primary Key)
-*   `user_id` (Foreign Key referencing `user.id`)
-*   `chat_id` (UUID grouping the conversation thread)
-*   `subject` (Math, Science, History, etc.)
-*   `question` (User's query)
-*   `answer` (AI-generated response)
-*   `model_used` (Which AI responded)
-*   `image_url` (Optional attached image path)
-*   `created_at` (Timestamp of the message)
-
----
-
-## 📂 Project Structure
-
-```text
+Project Structure
 ai-student-helper/
 ├── app.py                  # Main Flask app, routes, and database models
 ├── requirements.txt        # Python dependencies
 ├── Procfile                # Gunicorn start command for Render
 ├── static/
-│   ├── css/
-│   │   └── style.css       # Custom stylesheets (dark mode & layout)
-│   └── js/
-│       └── main.js         # AJAX request handling & UI interactivity
+│   ├── css/style.css       # All custom styling
+│   └── js/main.js          # Frontend interactivity
 └── templates/
     ├── base.html           # Master layout with navbar and footer
-    ├── landing.html        # Public welcome/home page
-    ├── signin.html         # Login portal
-    ├── signup.html         # Registration page
-    ├── setup.html          # First-time profile setup
-    ├── dashboard.html      # AI chat workspace
-    ├── history.html        # Grouped history lists
-    ├── profile.html        # User statistics and information
-    ├── settings.html       # Theme and subject preferences
-    └── about.html          # Resume portfolio background page
-```
+    ├── landing.html        # Public homepage
+    ├── signin.html         # Sign in page
+    ├── signup.html         # Sign up page
+    ├── setup.html          # First time name setup
+    ├── dashboard.html      # Main AI chat interface
+    ├── history.html        # Grouped conversation history
+    ├── profile.html        # User stats and account info
+    ├── settings.html       # Preferences and theme
+    └── about.html          # About the project
 
----
+Database
+On the PostgreSQL on the Neon Cloud, there are two tables.
+The information held in the user table includes the Google ID, email, first name, last name, the default subject and the date of joining of each student.
+Every question and answer, including the subject, AI model applied, chat session ID, and time are stored in the message table to allow conversations to be aggregated and restarted.
 
-## 💻 Running Locally
-
-### 1. Clone & Set Up Directory
-```bash
-git clone https://github.com/modevs-cloud/ai-student-helper.git
+Running Locally
+bashgit clone https://github.com/modevs-cloud/ai-student-helper.git
 cd ai-student-helper
-```
-
-### 2. Set Up Virtual Environment
-```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 3. Setup local Environment Variables
-Create a `.env` file in the root folder with these variables:
-```env
+Create a .env file in the root folder with these variables:
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 SECRET_KEY=your_secret_key
 DATABASE_URL=postgresql://your_neon_connection_string
 GROQ_API_KEY=your_groq_key
 GEMINI_API_KEY=your_gemini_key
-KIMI_API_KEY=your_kimi_key
-NVIDIA_API_KEY=your_nvidia_key
-GEMMA_API_KEY=your_gemma_key
-```
+Then run:
+bashpython app.py
+Open your browser at http://127.0.0.1:5000
 
-### 4. Run the App
-```bash
-python app.py
-```
-Open your browser and navigate to **`http://127.0.0.1:5000`**
+Deploying to Render
+Connect your GitHub repo to Render as a Web Service. Set the build command to pip install -r requirements.txt and the start command to gunicorn app:app. Add all your environment variables in the Render dashboard. In Google Cloud Console add your Render URL to the authorized redirect URIs as https://your-app.onrender.com/login/google/authorized.
 
----
-
-## 🚀 Deploying to Render
-
-1. Connect your GitHub repository to Render as a new **Web Service**.
-2. Set the configuration details as:
-   *   **Language:** `Python`
-   *   **Build Command:** `pip install -r requirements.txt`
-   *   **Start Command:** `gunicorn app:app`
-3. Add all your `.env` key-value pairs under the **Environment Variables** tab in Render.
-4. Set up Google Console Redirect:
-   *   In your **Google Cloud Console**, add your Render URL to your OAuth Authorized Redirect URIs:
-       `https://your-app-name.onrender.com/login/google/authorized`
-
----
-
-## 👨‍💻 Built By
-
-**Mohammad Hussainkhail**
-*   🎓 **Associate of Science in Computer Science** — *Community College of Aurora (2026)*
-*   📖 **BS in Computer Science** — *MSU Denver (Currently pursuing)*
-*   🐙 **GitHub:** [github.com/modevs-cloud](https://github.com/modevs-cloud)
-*   📧 **Email:** [mohammadhu1058@gmail.com](mailto:mohammadhu1058@gmail.com)
+Built By
+Mohammad Hussainkhail
+Associate of Science in Computer Science — Community College of Aurora (2026)
+Currently pursuing BS in Computer Science at MSU Denver
+GitHub: github.com/modevs-cloud
+Email: mohammadhu1058@gmail.com

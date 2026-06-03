@@ -51,3 +51,6 @@ AI — what answers the questions:
 Groq API (Llama 3) as the first choice and Gemini API as the backup. Both are completely free.
 Storage — where data is saved:
 Flask-Session. Saves the student's name, login state, question history, and settings while they are using the app.
+
+
+

@@ -3,6 +3,11 @@
 
 {% block content %}
 
+{% if session_token %}
+  <!-- Expose session token to iOS WKWebView for seamless authentication integration -->
+  <meta id="session-token" content="{{ session_token }}">
+{% endif %}
+
 <!-- Highlight.js for beautiful coding syntax highlighting (Monokai Sublime Theme) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai-sublime.min.css" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous"></script>

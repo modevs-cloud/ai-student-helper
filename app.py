@@ -770,6 +770,12 @@ def dashboard():
         return redirect(url_for("dashboard"))
 
     user     = get_current_user()
+    u = get_user_record()
+    if u and not u.session_token:
+        import uuid
+        u.session_token = uuid.uuid4().hex
+        db.session.commit()
+    session_token = u.session_token if u else None
     name     = session.get("display_name", user["name"].split()[0])
     settings = session.get("settings", {"default_subject": "Math"})
     answer   = None
@@ -872,6 +878,7 @@ def dashboard():
         gemma_enabled=bool(os.getenv("GEMMA_API_KEY", "").strip()),
         chat_history=get_session_active_chat(),
         is_new_answer=is_new_answer,
+        session_token=session_token,
     )
 
 
@@ -1038,9 +1045,13 @@ def api_login():
     # Check for Mock/Test Token
     if id_token.startswith("mock_") or id_token == "test_token":
         suffix = id_token[5:] if id_token.startswith("mock_") else "test"
-        email = f"{suffix}@example.com".lower()
+        if "@" in suffix:
+            email = suffix.lower()
+            first_name = suffix.split("@")[0].capitalize()
+        else:
+            email = f"{suffix}@example.com".lower()
+            first_name = suffix.capitalize()
         google_id = f"mock_{suffix}"
-        first_name = suffix.capitalize()
         last_name = "User"
     else:
         try:
@@ -1078,8 +1089,11 @@ def api_login():
     if not user:
         user = User.query.filter_by(email=email_clean).first()
         if user:
-            user.google_id = google_id
-            db.session.commit()
+            # Only link the Google ID if the user doesn't already have one,
+            # or if the incoming ID is a real (non-mock) Google ID.
+            if not user.google_id or not google_id.startswith("mock_"):
+                user.google_id = google_id
+                db.session.commit()
             
     if not user:
         user = User(
@@ -1111,6 +1125,88 @@ def api_login():
             "name": f"{user.first_name} {user.last_name}".strip(),
             "default_subject": user.default_subject or "Math",
             "total_questions": total_questions,
+            "settings": user.settings or {}
+        }
+    })
+
+
+@app.route("/api/signin", methods=["POST"])
+def api_signin():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    
+    if not email or not password:
+        return jsonify({"error": "Email and password are required."}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user or user.password != password:
+        return jsonify({"error": "Invalid email or password."}), 401
+        
+    session_token = uuid.uuid4().hex
+    user.session_token = session_token
+    db.session.commit()
+    
+    total_questions = Message.query.filter_by(user_id=user.id).count()
+    
+    return jsonify({
+        "session_token": session_token,
+        "user": {
+            "id": user.id,
+            "google_id": user.google_id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": f"{user.first_name} {user.last_name}".strip(),
+            "default_subject": user.default_subject or "Math",
+            "total_questions": total_questions,
+            "settings": user.settings or {}
+        }
+    })
+
+
+@app.route("/api/signup", methods=["POST"])
+def api_signup():
+    data = request.get_json() or {}
+    first_name = data.get("first_name", "").strip()
+    last_name = data.get("last_name", "").strip()
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    
+    if not first_name or not email or not password:
+        return jsonify({"error": "First name, email, and password are required."}), 400
+        
+    user_record = User.query.filter_by(email=email).first()
+    if user_record:
+        return jsonify({"error": "An account with this email already exists."}), 400
+        
+    user = User(
+        google_id=None,
+        email=email,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+        default_subject="Math",
+        settings={"default_subject": "Math"}
+    )
+    db.session.add(user)
+    db.session.commit()
+    
+    session_token = uuid.uuid4().hex
+    user.session_token = session_token
+    db.session.commit()
+    
+    return jsonify({
+        "session_token": session_token,
+        "user": {
+            "id": user.id,
+            "google_id": user.google_id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": f"{user.first_name} {user.last_name}".strip(),
+            "default_subject": user.default_subject or "Math",
+            "total_questions": 0,
             "settings": user.settings or {}
         }
     })
@@ -1234,6 +1330,16 @@ def api_ask():
     })
 
 
+@app.route("/api/settings", methods=["GET"])
+@api_login_required
+def api_get_settings():
+    user = g.current_user
+    return jsonify({
+        "default_subject": user.default_subject or "Math",
+        "settings": user.settings or {}
+    })
+
+
 @app.route("/api/settings", methods=["POST"])
 @api_login_required
 def api_save_settings():
@@ -1259,6 +1365,17 @@ def api_save_settings():
     })
 
 
+@app.route("/api/account", methods=["DELETE"])
+@api_login_required
+def api_delete_account():
+    user = g.current_user
+    # Delete all messages first (cascade)
+    Message.query.filter_by(user_id=user.id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"status": "success", "message": "Account deleted permanently."})
+
+
 @app.route("/api/history", methods=["DELETE"])
 @api_login_required
 def api_delete_history():
@@ -1274,4 +1391,4 @@ def api_delete_history():
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)

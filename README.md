@@ -58,7 +58,6 @@ ai-student-helper/
 ├── app.py                  # Main Flask app, routes, and database models
 ├── requirements.txt        # Python dependencies
 ├── Procfile                # Gunicorn start command for Render
-├── ios_api.py              # iOS native app endpoints
 ├── static/
 │   ├── css/style.css       # Custom styling and theming
 │   └── js/main.js          # Frontend interactivity

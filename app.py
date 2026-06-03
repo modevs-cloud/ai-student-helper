@@ -770,7 +770,6 @@ def dashboard():
     user     = get_current_user()
     u = get_user_record()
     if u and not u.session_token:
-        import uuid
         u.session_token = uuid.uuid4().hex
         db.session.commit()
     session_token = u.session_token if u else None

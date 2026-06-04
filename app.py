@@ -45,9 +45,6 @@ else:
 # Logging setup to check environment variables on Render
 app.logger.info(f"STARTUP DEBUG: Groq detected = {bool(os.getenv('GROQ_API_KEY'))}")
 app.logger.info(f"STARTUP DEBUG: Gemini detected = {bool(os.getenv('GEMINI_API_KEY'))}")
-app.logger.info(f"STARTUP DEBUG: Kimi detected = {bool(os.getenv('KIMI_API_KEY'))}")
-app.logger.info(f"STARTUP DEBUG: Nvidia detected = {bool(os.getenv('NVIDIA_API_KEY'))}")
-app.logger.info(f"STARTUP DEBUG: Gemma detected = {bool(os.getenv('GEMMA_API_KEY'))}")
 
 db_url = os.getenv("DATABASE_URL")
 if db_url and db_url.startswith("postgres://"):
@@ -389,86 +386,12 @@ def ask_gemini(messages):
     return None
 
 
-def ask_kimi(messages):
-    """Call Kimi (Moonshot AI) API with a messages list. Returns answer string or None."""
-    key = os.getenv("KIMI_API_KEY", "").strip()
-    if not key:
-        return None
-    try:
-        resp = req.post(
-            "https://api.moonshot.cn/v1/chat/completions",
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={
-                "model": "moonshot-v1-8k",
-                "messages": messages,
-                "max_tokens": 4000,
-            },
-            timeout=45,
-        )
-        if resp.ok:
-            return resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"Kimi error: {e}")
-    return None
-
-
-def ask_nvidia(messages):
-    """Call NVIDIA NIM API (Mistral Large) with a messages list. Returns answer string or None."""
-    key = os.getenv("NVIDIA_API_KEY", "").strip()
-    print(f"DEBUG: ask_nvidia called. Key present: {bool(key)}")
-    if not key:
-        return None
-    try:
-        resp = req.post(
-            "https://integrate.api.nvidia.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={
-                "model": "mistralai/mistral-large-3-675b-instruct-2512",
-                "messages": messages,
-                "max_tokens": 4000,
-                "temperature": 0.15,
-                "top_p": 1.00,
-                "stream": False,
-            },
-            timeout=45,
-        )
-        if resp.ok:
-            return resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"NVIDIA error: {e}")
-    return None
-
-
-def ask_gemma(messages):
-    """Call Gemma (google/gemma-2-2b-it) via NVIDIA NIM API."""
-    key = os.getenv("GEMMA_API_KEY", "").strip()
-    if not key:
-        return None
-    try:
-        resp = req.post(
-            "https://integrate.api.nvidia.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={
-                "model": "google/gemma-2-2b-it",
-                "messages": messages,
-                "max_tokens": 4000,
-                "temperature": 0.15,
-                "top_p": 1.00,
-                "stream": False,
-            },
-            timeout=45,
-        )
-        if resp.ok:
-            return resp.json()["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        print(f"Gemma error: {e}")
-    return None
-
 
 def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, image_mime=None):
     """
-    Ask the AI with the chosen model, passing full conversation history for memory.
-    chat_history: list of dicts with 'question' and 'answer' keys (from active_chat session).
+    Ask the AI — Groq Llama 3 is the primary model, Gemini is the automatic silent fallback.
+    If the chosen model fails for any reason, the other is tried automatically.
+    chat_history: list of dicts with 'question' and 'answer' keys.
     image_b64: base64-encoded image bytes (optional).
     image_mime: MIME type of the image e.g. 'image/jpeg' (optional).
     """
@@ -500,37 +423,43 @@ def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, i
         "content": f"[{subject}] {question}"
     })
 
+    # ── Route to models: Groq = primary, Gemini = silent automatic fallback ─────────
     if image_b64 and image_mime:
-        # Route to vision-capable models first; fall back to text-only if they fail
+        # Both vision-capable models; try chosen one first, then the other
         if model == "gemini":
             answer = (ask_gemini_vision(messages, image_b64, image_mime)
                       or ask_groq_vision(messages, image_b64, image_mime)
-                      or ask_gemini(messages) or ask_groq(messages) or ask_nvidia(messages) or ask_gemma(messages))
-        else:  # groq, kimi, nvidia, gemma, or any other — use groq/gemini vision
+                      or ask_gemini(messages)
+                      or ask_groq(messages))
+        else:  # groq (default)
             answer = (ask_groq_vision(messages, image_b64, image_mime)
                       or ask_gemini_vision(messages, image_b64, image_mime)
-                      or ask_groq(messages) or ask_gemini(messages) or ask_nvidia(messages) or ask_gemma(messages))
+                      or ask_groq(messages)
+                      or ask_gemini(messages))
     else:
         if model == "gemini":
-            answer = ask_gemini(messages) or ask_gemma(messages) or ask_nvidia(messages) or ask_groq(messages) or ask_kimi(messages)
-        elif model == "kimi":
-            answer = ask_kimi(messages) or ask_gemma(messages) or ask_nvidia(messages) or ask_groq(messages) or ask_gemini(messages)
-        elif model == "nvidia":
-            answer = ask_nvidia(messages) or ask_gemma(messages) or ask_groq(messages) or ask_gemini(messages) or ask_kimi(messages)
-        elif model == "gemma":
-            answer = ask_gemma(messages) or ask_nvidia(messages) or ask_groq(messages) or ask_gemini(messages) or ask_kimi(messages)
+            # Gemini first, Groq as silent fallback
+            answer = ask_gemini(messages) or ask_groq(messages)
         else:  # groq (default)
-            answer = ask_groq(messages) or ask_gemma(messages) or ask_nvidia(messages) or ask_gemini(messages) or ask_kimi(messages)
+            # Groq first, Gemini as silent fallback
+            answer = ask_groq(messages) or ask_gemini(messages)
 
     if not answer:
         answer = (
-            "⚠️ Could not get an AI answer. Please check that your API keys "
-            "are correctly set in the .env file and restart the server."
+            "⚠️ AI is temporarily unavailable. Please try again in a moment."
         )
     return answer
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+
+# ─── Routes ────────────────────────────────────────────────────────────────────────
+
+# ── Keep-alive ping (prevents Render free tier from sleeping) ───────────────
+
+@app.route("/ping")
+def ping():
+    return jsonify({"status": "ok", "message": "AI Student Helper is alive"}), 200
+
 
 @app.route("/")
 def landing():

@@ -9,6 +9,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(err => console.error('Error updating session:', err));
   };
 
+  /* ── Keep-alive ping (prevents Render from sleeping) ──────── */
+  // Pings /ping every 10 minutes so the server never idles out
+  const PING_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+  function sendKeepAlivePing() {
+    fetch('/ping', { method: 'GET', cache: 'no-store' })
+      .then(r => r.ok && console.debug('Keep-alive ping OK'))
+      .catch(() => {}); // silent — never show errors to user
+  }
+  // Initial ping after 30 seconds, then every 10 minutes
+  setTimeout(() => {
+    sendKeepAlivePing();
+    setInterval(sendKeepAlivePing, PING_INTERVAL_MS);
+  }, 30_000);
+
+  /* ── Global fetch with 90-second timeout ───────────────────── */
+  // Attach to window so dashboard and other pages can use it
+  window.fetchWithTimeout = (url, options = {}, timeoutMs = 90_000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal })
+      .finally(() => clearTimeout(id));
+  };
+
   /* ── Theme toggle ──────────────────────────────────────────── */
   const toggleBtn = document.getElementById('theme-toggle');
   if (toggleBtn) {

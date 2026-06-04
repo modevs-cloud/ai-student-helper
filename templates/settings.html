@@ -37,7 +37,7 @@
         </div>
         <div>
           <div class="sett-section-title">Learning Preferences</div>
-          <div class="sett-section-sub">Set your default subject and AI model for chat sessions</div>
+          <div class="sett-section-sub">Set your default subject and preferred AI model. Groq Llama 3 is the primary model — Gemini kicks in automatically as a silent fallback if needed.</div>
         </div>
       </div>
 
@@ -61,72 +61,28 @@
           <p style="font-size:0.75rem; color:#555; margin:0 0 0.4rem;">Choose the AI engine that powers your answers</p>
           <select id="sett-model" name="preferred_model" class="sett-select">
             {% set current_model = settings.get('preferred_model', 'groq') %}
-            {% if groq_enabled %}
             <option value="groq"   {% if current_model == 'groq' %}selected{% endif %}>Groq Llama 3</option>
-            {% endif %}
-            {% if gemini_enabled %}
             <option value="gemini" {% if current_model == 'gemini' %}selected{% endif %}>Gemini</option>
-            {% endif %}
-            {% if kimi_enabled %}
-            <option value="kimi"   {% if current_model == 'kimi' %}selected{% endif %}>Kimi</option>
-            {% endif %}
-            {% if nvidia_enabled %}
-            <option value="nvidia" {% if current_model == 'nvidia' %}selected{% endif %}>Mistral Large (NVIDIA)</option>
-            {% endif %}
-            {% if gemma_enabled %}
-            <option value="gemma"  {% if current_model == 'gemma' %}selected{% endif %}>Gemma 2 2B (Code Gen)</option>
-            {% endif %}
           </select>
         </div>
       </div>
 
-      <!-- Model cards -->
+      <!-- Model cards: Groq and Gemini only -->
       <div class="sett-model-cards">
-        {% if groq_enabled %}
-        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'groq' %}active{% endif %}" data-model="groq" role="button" tabindex="0" aria-label="Select Groq Llama 3">
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') != 'gemini' %}active{% endif %}" data-model="groq" role="button" tabindex="0" aria-label="Select Groq Llama 3">
           <div class="sett-model-icon">⚡</div>
           <div>
-            <div class="sett-model-name">Groq Llama 3</div>
-            <div class="sett-model-desc">Ultra-fast inference, great for quick answers and explanations</div>
+            <div class="sett-model-name">Groq Llama 3 <span style="font-size:0.65rem; background:rgba(45,212,191,0.12); color:#2dd4bf; border:1px solid rgba(45,212,191,0.3); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">PRIMARY</span></div>
+            <div class="sett-model-desc">Ultra-fast inference — great for quick answers and explanations. Gemini kicks in automatically if Groq is unavailable.</div>
           </div>
         </div>
-        {% endif %}
-        {% if gemini_enabled %}
         <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'gemini' %}active{% endif %}" data-model="gemini" role="button" tabindex="0" aria-label="Select Gemini">
           <div class="sett-model-icon">✨</div>
           <div>
-            <div class="sett-model-name">Gemini</div>
-            <div class="sett-model-desc">Google's advanced model, excellent for complex reasoning tasks</div>
+            <div class="sett-model-name">Gemini <span style="font-size:0.65rem; background:rgba(45,212,191,0.08); color:#6ee7b7; border:1px solid rgba(45,212,191,0.2); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">FALLBACK</span></div>
+            <div class="sett-model-desc">Google's advanced model — excellent for complex reasoning. Also serves as the automatic fallback when Groq is primary.</div>
           </div>
         </div>
-        {% endif %}
-        {% if kimi_enabled %}
-        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'kimi' %}active{% endif %}" data-model="kimi" role="button" tabindex="0" aria-label="Select Kimi">
-          <div class="sett-model-icon">🌙</div>
-          <div>
-            <div class="sett-model-name">Kimi</div>
-            <div class="sett-model-desc">Moonshot AI model, powerful long-context understanding</div>
-          </div>
-        </div>
-        {% endif %}
-        {% if nvidia_enabled %}
-        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'nvidia' %}active{% endif %}" data-model="nvidia" role="button" tabindex="0" aria-label="Select Mistral Large">
-          <div class="sett-model-icon">🚀</div>
-          <div>
-            <div class="sett-model-name">Mistral Large <span style="font-size:0.65rem; background:rgba(74,222,128,0.15); color:#4ade80; border:1px solid rgba(74,222,128,0.3); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">NEW</span></div>
-            <div class="sett-model-desc">NVIDIA NIM · Mistral's most powerful model, precise and insightful</div>
-          </div>
-        </div>
-        {% endif %}
-        {% if gemma_enabled %}
-        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'gemma' %}active{% endif %}" data-model="gemma" role="button" tabindex="0" aria-label="Select Gemma 2 2B">
-          <div class="sett-model-icon">💻</div>
-          <div>
-            <div class="sett-model-name">Gemma 2 2B <span style="font-size:0.65rem; background:rgba(74,222,128,0.15); color:#4ade80; border:1px solid rgba(74,222,128,0.3); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">NEW</span></div>
-            <div class="sett-model-desc">Google's open model, tuned for excellent code generation</div>
-          </div>
-        </div>
-        {% endif %}
       </div>
     </div>
 

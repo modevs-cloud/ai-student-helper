@@ -2,7 +2,7 @@
 
 **A full-stack web application that gives students instant AI-powered academic help on any subject.** 
 
-Students can sign in effortlessly with Google, ask questions, and receive clear, step-by-step explanations from up to five free AI models. It's like having a personal tutor available 24/7.
+Students can sign in with Google, ask questions across subjects, and receive clear step-by-step explanations — powered by Groq Llama 3 with Google Gemini as an automatic silent fallback. It's like having a personal tutor available 24/7.
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-2ea44f?style=for-the-badge)](https://ai-student-helper-qsjg.onrender.com)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -14,13 +14,11 @@ Students can sign in effortlessly with Google, ask questions, and receive clear,
 
 - **No Passwords Needed:** Seamless Google OAuth 2.0 integration for quick access.
 - **Interactive Dashboard:** A chat-style interface where students ask questions on the left and receive AI answers on the right.
-- **Multiple AI Models:** Choose from top-tier AI models including:
-  - Groq Llama 3
-  - Google Gemini
-  - Kimi
-  - Mistral Large (NVIDIA NIM)
-  - Gemma 2B (NVIDIA NIM)
-- **Smart Fallback Logic:** Automatically switches to a backup model if the primary one experiences downtime.
+- **Dual AI Models with Auto-Fallback:**
+  - **Groq API with Llama 3** — the primary model. Ultra-fast inference, great for quick answers.
+  - **Google Gemini API** — automatic silent fallback. If Groq hits a rate limit or is unavailable, Gemini takes over instantly with no error shown to the user.
+- **Smart Fallback Logic:** Groq is primary. If Groq fails for any reason, Gemini takes over automatically and silently — users never see an error.
+- **Keep-Alive System:** Client-side ping every 10 minutes ensures the Render server never sleeps, so the app is always instant-on.
 - **Chat History:** Grouped conversation sessions similar to ChatGPT, allowing students to revisit and continue past study sessions.
 - **User Profiles:** Track questions asked and view subject breakdowns.
 - **Customizable Settings:** Toggle between Dark and Light themes, set a default subject, and manage history.
@@ -45,7 +43,8 @@ Students can sign in effortlessly with Google, ask questions, and receive clear,
 - Google OAuth 2.0 (Flask-Dance)
 
 **AI Integrations:**
-- Groq API, Google Gemini API, Kimi API, NVIDIA NIM API
+- Groq API (Llama 3) — primary model
+- Google Gemini API — automatic silent fallback
 
 **Deployment:**
 - Hosted on Render using Gunicorn with automatic GitHub deploys

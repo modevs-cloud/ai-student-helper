@@ -49,7 +49,7 @@
       <div class="ch-dropdown" id="model-dd" style="position:relative;">
         <button type="button" class="ch-pill" id="model-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex; align-items:center; gap:6px; background:#161616; border:1px solid #2a2a2a; border-radius:999px; padding:0.4rem 0.9rem; font-size:0.82rem; color:#e5e5e5; cursor:pointer; transition:all 0.15s;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-          <span id="model-label">{% if model == 'gemini' %}Gemini{% elif model == 'kimi' %}Kimi{% elif model == 'nvidia' %}Mistral Large{% elif model == 'gemma' %}Gemma 2 2B{% else %}Groq Llama 3{% endif %}</span>
+          <span id="model-label">{% if model == 'gemini' %}Gemini{% else %}Groq Llama 3{% endif %}</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div id="model-menu" class="ch-menu" role="menu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; background:#111; border:1px solid #2a2a2a; border-radius:10px; padding:0.4rem; min-width:200px; z-index:100; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
@@ -59,7 +59,7 @@
               <div style="font-weight:600; color:#e5e5e5;">Groq Llama 3</div>
               <div style="font-size:0.72rem; color:#666;">Fast & free</div>
             </div>
-            {% if model != 'gemini' and model != 'kimi' and model != 'nvidia' and model != 'gemma' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
+            {% if model != 'gemini' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
           </button>
           {% endif %}
           {% if gemini_enabled %}
@@ -69,33 +69,6 @@
               <div style="font-size:0.72rem; color:#666;">Advanced reasoning</div>
             </div>
             {% if model == 'gemini' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
-          </button>
-          {% endif %}
-          {% if kimi_enabled %}
-          <button type="button" class="ch-menu-item model-item" data-val="kimi" data-label="Kimi" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
-            <div>
-              <div style="font-weight:600; color:#e5e5e5;">Kimi</div>
-              <div style="font-size:0.72rem; color:#666;">Long context</div>
-            </div>
-            {% if model == 'kimi' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
-          </button>
-          {% endif %}
-          {% if nvidia_enabled %}
-          <button type="button" class="ch-menu-item model-item" data-val="nvidia" data-label="Mistral Large" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
-            <div>
-              <div style="font-weight:600; color:#e5e5e5;">Mistral Large <span style="font-size:0.67rem; background:#1a2a20; color:#4ade80; border:1px solid #1e3a2a; border-radius:4px; padding:1px 5px; margin-left:4px; font-weight:600;">NEW</span></div>
-              <div style="font-size:0.72rem; color:#666;">NVIDIA NIM · Powerful & precise</div>
-            </div>
-            {% if model == 'nvidia' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
-          </button>
-          {% endif %}
-          {% if gemma_enabled %}
-          <button type="button" class="ch-menu-item model-item" data-val="gemma" data-label="Gemma 2 2B" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
-            <div>
-              <div style="font-weight:600; color:#e5e5e5;">Gemma 2 2B</div>
-              <div style="font-size:0.72rem; color:#666;">Code gen & dev</div>
-            </div>
-            {% if model == 'gemma' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
           </button>
           {% endif %}
         </div>
@@ -138,7 +111,7 @@
         <p style="font-size:0.78rem; color:#2dd4bf; margin-top:0.75rem; font-weight:500; opacity:0.85;">💡 Tip: Pick your subject and AI model from the top bar first, then ask your question!</p>
         <div id="empty-state-active" style="font-size:0.76rem; color:#666; margin-top:0.85rem; padding:0.45rem 1rem; background:rgba(45,212,191,0.03); border:1px dashed rgba(45,212,191,0.12); border-radius:8px; display:flex; align-items:center; gap:6px;">
           <span style="width:5px; height:5px; background:#2dd4bf; border-radius:50%;"></span>
-          <span>Selected: <strong id="empty-subj" style="color:#2dd4bf; font-weight:600;">{{ subject if subject else default_subject }}</strong> with <strong id="empty-model" style="color:#2dd4bf; font-weight:600;">{% if model == 'gemini' %}Gemini{% elif model == 'kimi' %}Kimi{% elif model == 'nvidia' %}Mistral Large{% elif model == 'gemma' %}Gemma 2 2B{% else %}Groq Llama 3{% endif %}</strong></span>
+          <span>Selected: <strong id="empty-subj" style="color:#2dd4bf; font-weight:600;">{{ subject if subject else default_subject }}</strong> with <strong id="empty-model" style="color:#2dd4bf; font-weight:600;">{% if model == 'gemini' %}Gemini{% else %}Groq Llama 3{% endif %}</strong></span>
         </div>
       </div>
     {% else %}
@@ -426,9 +399,6 @@
     if (emptyModel) {
       let labelText = 'Groq Llama 3';
       if (modelVal === 'gemini') labelText = 'Gemini';
-      else if (modelVal === 'kimi') labelText = 'Kimi';
-      else if (modelVal === 'nvidia') labelText = 'Mistral Large';
-      else if (modelVal === 'gemma') labelText = 'Gemma 2 2B';
       emptyModel.textContent = labelText;
     }
   }

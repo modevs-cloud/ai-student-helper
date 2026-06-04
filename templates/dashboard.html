@@ -332,7 +332,15 @@
       });
 
       if (!res.ok) {
-        throw new Error(await res.text() || res.statusText);
+        // Try to parse the error body as JSON first for a friendly message
+        let errMsg = res.statusText;
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) errMsg = errData.error;
+        } catch (_) {
+          try { errMsg = await res.text() || res.statusText; } catch (_2) {}
+        }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();
@@ -354,12 +362,24 @@
       initTypewriter(answerEl);
 
     } catch (err) {
-      // Handle error visually
+      // Handle error visually — always show a clean friendly message
       const answerEl = aiBubbleContainer.querySelector('.answer-text');
       if (answerEl) {
-         answerEl.innerHTML = `<span style="color:#f87171;">⚠️ ${err.message || 'An error occurred'}</span>`;
-         const bubble = aiBubbleContainer.querySelector('.typing-bubble');
-         if (bubble) bubble.classList.remove('typing-bubble');
+        // Try to extract a clean message — avoid showing raw HTML or HTTP status text
+        let userMsg = 'Something went wrong. Please try again in a moment.';
+        try {
+          const errText = err.message || '';
+          // If the server returned JSON with an error field, parse and use it
+          if (errText.startsWith('{')) {
+            const parsed = JSON.parse(errText);
+            if (parsed.error) userMsg = parsed.error;
+          } else if (errText && !errText.toLowerCase().includes('internal server') && errText.length < 200) {
+            userMsg = errText;
+          }
+        } catch (_) { /* ignore parse errors */ }
+        answerEl.innerHTML = `<span style="color:#f87171;">⚠️ ${userMsg}</span>`;
+        const bubble = aiBubbleContainer.querySelector('.typing-bubble');
+        if (bubble) bubble.classList.remove('typing-bubble');
       }
     } finally {
       // 7. Re-enable form

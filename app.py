@@ -534,197 +534,235 @@ def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, i
 
 @app.route("/")
 def landing():
-    if get_current_user():
-        return redirect(url_for("dashboard"))
-    return render_template("landing.html")
+    try:
+        if get_current_user():
+            return redirect(url_for("dashboard"))
+        return render_template("landing.html")
+    except Exception as e:
+        print(f"ERROR /landing: {e}")
+        return render_template("landing.html")
 
 
 @app.route("/after-login")
 def after_login():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
+    try:
+        if not google.authorized:
+            return redirect(url_for("google.login"))
 
-    resp = google.get("/oauth2/v2/userinfo")
-    if not resp.ok:
-        flash("Could not fetch your Google account info. Please try again.")
-        return redirect(url_for("landing"))
+        resp = google.get("/oauth2/v2/userinfo")
+        if not resp.ok:
+            flash("Could not fetch your Google account info. Please try again.")
+            return redirect(url_for("landing"))
 
-    info = resp.json()
-    google_id = str(info.get("id"))
+        info = resp.json()
+        google_id = str(info.get("id"))
 
-    session["user"] = {
-        "email":   info.get("email"),
-        "name":    info.get("name"),
-        "picture": info.get("picture"),
-        "id":      google_id,
-    }
+        session["user"] = {
+            "email":   info.get("email"),
+            "name":    info.get("name"),
+            "picture": info.get("picture"),
+            "id":      google_id,
+        }
 
-    # ── Check if we have saved data for this user ─────────────────────────────
-    saved = User.query.filter_by(google_id=google_id).first()
-    if not saved and info.get("email"):
-        email_clean = info.get("email").lower().strip()
-        saved = User.query.filter_by(email=email_clean).first()
+        # ── Check if we have saved data for this user ─────────────────────────────
+        try:
+            saved = User.query.filter_by(google_id=google_id).first()
+            if not saved and info.get("email"):
+                email_clean = info.get("email").lower().strip()
+                saved = User.query.filter_by(email=email_clean).first()
+                if saved:
+                    saved.google_id = google_id
+                    db.session.commit()
+        except Exception as db_err:
+            print(f"ERROR after_login DB lookup: {db_err}")
+            saved = None
+
         if saved:
-            # Link Google ID to existing account
-            saved.google_id = google_id
-            db.session.commit()
-
-    if saved:
-        # Returning user — restore their data, skip setup
-        session["display_name"] = f"{saved.first_name} {saved.last_name}".strip()
-        session["settings"]     = saved.settings or {"default_subject": saved.default_subject or "Math"}
-        return redirect(url_for("dashboard"))
-    else:
-        # First time ever — go to setup
-        return redirect(url_for("setup"))
+            session["display_name"] = f"{saved.first_name} {saved.last_name}".strip()
+            session["settings"]     = saved.settings or {"default_subject": saved.default_subject or "Math"}
+            return redirect(url_for("dashboard"))
+        else:
+            return redirect(url_for("setup"))
+    except Exception as e:
+        print(f"ERROR /after-login: {e}")
+        flash("Something went wrong during sign-in. Please try again.")
+        return redirect(url_for("landing"))
 
 
 @app.route("/setup", methods=["GET", "POST"])
 def setup():
-    if "user" not in session:
-        return redirect(url_for("landing"))
-        
-    if request.method == "POST":
-        first   = request.form.get("first_name", "").strip()
-        last    = request.form.get("last_name", "").strip()
-        subject = request.form.get("default_subject", "Math")
-        if first:
-            display_name = f"{first} {last}".strip()
-            session["display_name"] = display_name
-            session["settings"] = {"default_subject": subject}
+    try:
+        if "user" not in session:
+            return redirect(url_for("landing"))
             
-            # Check if user already exists with this email to avoid duplicate key IntegrityError
-            email_clean = session["user"]["email"].lower().strip()
-            existing_user = User.query.filter_by(email=email_clean).first()
-            
-            if existing_user:
-                # Link and update the existing user
-                existing_user.google_id = session["user"]["id"]
-                existing_user.first_name = first
-                existing_user.last_name = last
-                existing_user.default_subject = subject
-                existing_user.settings = {"default_subject": subject}
-                db.session.commit()
-            else:
-                # Create a new user
-                new_user = User(
-                    google_id=session["user"]["id"],
-                    email=email_clean,
-                    first_name=first,
-                    last_name=last,
-                    default_subject=subject,
-                    settings={"default_subject": subject}
-                )
-                db.session.add(new_user)
-                db.session.commit()
+        if request.method == "POST":
+            first   = request.form.get("first_name", "").strip()
+            last    = request.form.get("last_name", "").strip()
+            subject = request.form.get("default_subject", "Math")
+            if first:
+                display_name = f"{first} {last}".strip()
+                session["display_name"] = display_name
+                session["settings"] = {"default_subject": subject}
                 
-            return redirect(url_for("dashboard"))
-    return render_template("setup.html")
+                try:
+                    email_clean = session["user"]["email"].lower().strip()
+                    existing_user = User.query.filter_by(email=email_clean).first()
+                    
+                    if existing_user:
+                        existing_user.google_id = session["user"]["id"]
+                        existing_user.first_name = first
+                        existing_user.last_name = last
+                        existing_user.default_subject = subject
+                        existing_user.settings = {"default_subject": subject}
+                        db.session.commit()
+                    else:
+                        new_user = User(
+                            google_id=session["user"]["id"],
+                            email=email_clean,
+                            first_name=first,
+                            last_name=last,
+                            default_subject=subject,
+                            settings={"default_subject": subject}
+                        )
+                        db.session.add(new_user)
+                        db.session.commit()
+                except Exception as db_err:
+                    print(f"ERROR /setup DB save: {db_err}")
+                    db.session.rollback()
+                    flash("Could not save your profile. Please try again.")
+                    return render_template("setup.html")
+                    
+                return redirect(url_for("dashboard"))
+        return render_template("setup.html")
+    except Exception as e:
+        print(f"ERROR /setup: {e}")
+        return render_template("setup.html")
 
 
 @app.route("/signin", methods=["GET", "POST"])
 def signin():
-    u_sess = get_current_user()
-    if u_sess:
-        if User.query.filter_by(email=u_sess.get("email")).first():
+    try:
+        u_sess = get_current_user()
+        if u_sess:
+            try:
+                if User.query.filter_by(email=u_sess.get("email")).first():
+                    return redirect(url_for("dashboard"))
+                else:
+                    session.clear()
+            except Exception:
+                session.clear()
+            
+        if request.method == "POST":
+            email    = request.form.get("email", "").strip().lower()
+            password = request.form.get("password", "")
+            
+            if not email or not password:
+                flash("Please enter both email and password.")
+                return render_template("signin.html")
+
+            try:
+                user_record = User.query.filter_by(email=email).first()
+            except Exception as db_err:
+                print(f"ERROR /signin DB: {db_err}")
+                flash("Database temporarily unavailable. Please try again.")
+                return render_template("signin.html")
+                
+            if not user_record:
+                flash("No account found with this email.")
+                return render_template("signin.html")
+                
+            if user_record.password != password:
+                flash("Incorrect password. Please try again.")
+                return render_template("signin.html")
+                
+            session["user"] = {
+                "email": email,
+                "name": f"{user_record.first_name} {user_record.last_name}".strip(),
+                "picture": None,
+                "id": user_record.google_id or make_mock_id(email)
+            }
+            session["display_name"] = session["user"]["name"]
+            session["settings"] = user_record.settings or {"default_subject": user_record.default_subject or "Math"}
+            
+            flash("Welcome back! 👋")
             return redirect(url_for("dashboard"))
-        else:
-            session.clear()
-        
-    if request.method == "POST":
-        email    = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        
-        if not email or not password:
-            flash("Please enter both email and password.")
-            return render_template("signin.html")
             
-        # Find user
-        user_record = User.query.filter_by(email=email).first()
-        if not user_record:
-            flash("No account found with this email.")
-            return render_template("signin.html")
-            
-        if user_record.password != password:
-            flash("Incorrect password. Please try again.")
-            return render_template("signin.html")
-            
-        # Log in
-        session["user"] = {
-            "email": email,
-            "name": f"{user_record.first_name} {user_record.last_name}".strip(),
-            "picture": None,
-            "id": user_record.google_id or make_mock_id(email)
-        }
-        session["display_name"] = session["user"]["name"]
-        session["settings"] = user_record.settings or {"default_subject": user_record.default_subject or "Math"}
-        
-        flash("Welcome back! 👋")
-        return redirect(url_for("dashboard"))
-        
-    return render_template("signin.html")
+        return render_template("signin.html")
+    except Exception as e:
+        print(f"ERROR /signin: {e}")
+        flash("Something went wrong. Please try again.")
+        return render_template("signin.html")
 
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-    u_sess = get_current_user()
-    if u_sess:
-        if User.query.filter_by(email=u_sess.get("email")).first():
+    try:
+        u_sess = get_current_user()
+        if u_sess:
+            try:
+                if User.query.filter_by(email=u_sess.get("email")).first():
+                    return redirect(url_for("dashboard"))
+                else:
+                    session.clear()
+            except Exception:
+                session.clear()
+            
+        if request.method == "POST":
+            first_name = request.form.get("first_name", "").strip()
+            last_name  = request.form.get("last_name", "").strip()
+            email      = request.form.get("email", "").strip().lower()
+            password   = request.form.get("password", "")
+            confirm    = request.form.get("confirm_password", "")
+            
+            if not first_name or not email or not password:
+                flash("Please fill in all required fields.")
+                return render_template("signup.html")
+                
+            if password != confirm:
+                flash("Passwords do not match. Please try again.")
+                return render_template("signup.html")
+
+            try:
+                user_record = User.query.filter_by(email=email).first()
+                if user_record:
+                    flash("An account with this email already exists.")
+                    return render_template("signup.html")
+                    
+                mock_id = make_mock_id(email)
+                new_user = User(
+                    google_id=None,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    default_subject="Math",
+                    settings={"default_subject": "Math"}
+                )
+                db.session.add(new_user)
+                db.session.commit()
+            except Exception as db_err:
+                print(f"ERROR /signup DB: {db_err}")
+                db.session.rollback()
+                flash("Could not create your account. Please try again.")
+                return render_template("signup.html")
+            
+            session["user"] = {
+                "email": email,
+                "name": f"{first_name} {last_name}".strip(),
+                "picture": None,
+                "id": mock_id
+            }
+            session["display_name"] = session["user"]["name"]
+            session["settings"] = {"default_subject": "Math"}
+            
+            flash("Account created successfully! Welcome! 🚀")
             return redirect(url_for("dashboard"))
-        else:
-            session.clear()
-        
-    if request.method == "POST":
-        first_name = request.form.get("first_name", "").strip()
-        last_name  = request.form.get("last_name", "").strip()
-        email      = request.form.get("email", "").strip().lower()
-        password   = request.form.get("password", "")
-        confirm    = request.form.get("confirm_password", "")
-        
-        if not first_name or not email or not password:
-            flash("Please fill in all required fields.")
-            return render_template("signup.html")
             
-        if password != confirm:
-            flash("Passwords do not match. Please try again.")
-            return render_template("signup.html")
-            
-        # Check if email already exists
-        user_record = User.query.filter_by(email=email).first()
-        if user_record:
-            flash("An account with this email already exists.")
-            return render_template("signup.html")
-            
-        # Generate mock id
-        mock_id = make_mock_id(email)
-        
-        # Save credentials & info
-        new_user = User(
-            google_id=None, # null for manual signups
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            default_subject="Math",
-            settings={"default_subject": "Math"}
-        )
-        db.session.add(new_user)
-        db.session.commit()
-        
-        # Create session
-        session["user"] = {
-            "email": email,
-            "name": f"{first_name} {last_name}".strip(),
-            "picture": None,
-            "id": mock_id
-        }
-        session["display_name"] = session["user"]["name"]
-        session["settings"] = {"default_subject": "Math"}
-        
-        flash("Account created successfully! Welcome! 🚀")
-        return redirect(url_for("dashboard"))
-        
-    return render_template("signup.html")
+        return render_template("signup.html")
+    except Exception as e:
+        print(f"ERROR /signup: {e}")
+        flash("Something went wrong. Please try again.")
+        return render_template("signup.html")
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -910,12 +948,26 @@ def dashboard():
 @app.route("/history")
 @login_required
 def history():
-    return render_template(
-        "history.html",
-        user=get_current_user(),
-        name=session.get("display_name", ""),
-        history=get_session_history(),
-    )
+    try:
+        try:
+            history_data = get_session_history()
+        except Exception as db_err:
+            print(f"ERROR /history DB: {db_err}")
+            history_data = []
+        return render_template(
+            "history.html",
+            user=get_current_user(),
+            name=session.get("display_name", ""),
+            history=history_data,
+        )
+    except Exception as e:
+        print(f"ERROR /history: {e}")
+        return render_template(
+            "history.html",
+            user=get_current_user(),
+            name=session.get("display_name", ""),
+            history=[],
+        )
 
 
 # ── Profile ───────────────────────────────────────────────────────────────────
@@ -923,23 +975,36 @@ def history():
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile():
-    user = get_current_user()
-    if request.method == "POST":
-        full_name = request.form.get("first_name", "").strip()
-        if full_name:
-            session["display_name"] = full_name
-            session.modified = True
-            _persist_user()
-            flash("Name updated successfully! 🎉")
-            return redirect(url_for("profile"))
-    return render_template(
-        "profile.html",
-        user=user,
-        name=session.get("display_name", user["name"]),
-        question_count=len(get_session_history()),
-        history=get_session_history(),
-        session=session,
-    )
+    try:
+        user = get_current_user()
+        if request.method == "POST":
+            full_name = request.form.get("first_name", "").strip()
+            if full_name:
+                session["display_name"] = full_name
+                session.modified = True
+                try:
+                    _persist_user()
+                except Exception as db_err:
+                    print(f"ERROR /profile DB save: {db_err}")
+                flash("Name updated successfully! 🎉")
+                return redirect(url_for("profile"))
+        try:
+            history_data = get_session_history()
+        except Exception as db_err:
+            print(f"ERROR /profile DB history: {db_err}")
+            history_data = []
+        return render_template(
+            "profile.html",
+            user=user,
+            name=session.get("display_name", user["name"]),
+            question_count=len(history_data),
+            history=history_data,
+            session=session,
+        )
+    except Exception as e:
+        print(f"ERROR /profile: {e}")
+        flash("Something went wrong loading your profile.")
+        return redirect(url_for("dashboard"))
 
 
 # ── Session Update ────────────────────────────────────────────────────────────
@@ -1020,15 +1085,21 @@ def settings():
 
 @app.route("/about")
 def about():
-    return render_template("about.html", user=get_current_user())
+    try:
+        return render_template("about.html", user=get_current_user())
+    except Exception as e:
+        print(f"ERROR /about: {e}")
+        return render_template("about.html", user=None)
 
 
 # ── Logout ────────────────────────────────────────────────────────────────────
 
 @app.route("/logout")
 def logout():
-    # Persist before clearing session
-    _persist_user()
+    try:
+        _persist_user()
+    except Exception as e:
+        print(f"ERROR /logout persist: {e}")
     session.clear()
     return redirect(url_for("landing"))
 
@@ -1464,6 +1535,46 @@ def api_delete_history():
         "status": "success",
         "message": "All chat history cleared permanently."
     })
+
+
+# ─── Global Error Handlers ────────────────────────────────────────────────────
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+       "application/json" in request.headers.get("Accept", ""):
+        return jsonify({"error": "Page not found."}), 404
+    # For browser requests, redirect to landing
+    flash("That page was not found.")
+    return redirect(url_for("landing")), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    print(f"GLOBAL 500 ERROR: {e}")
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+       "application/json" in request.headers.get("Accept", ""):
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+    flash("Something went wrong on our end. Please try again.")
+    try:
+        return redirect(url_for("landing"))
+    except Exception:
+        return "Something went wrong. Please refresh the page.", 500
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    print(f"UNHANDLED EXCEPTION: {e}")
+    traceback.print_exc()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+       "application/json" in request.headers.get("Accept", ""):
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+    flash("Something went wrong. Please try again.")
+    try:
+        return redirect(url_for("landing"))
+    except Exception:
+        return "Something went wrong. Please refresh the page.", 500
 
 
 # ─── Run ──────────────────────────────────────────────────────────────────────

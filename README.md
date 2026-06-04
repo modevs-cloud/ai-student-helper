@@ -24,6 +24,7 @@ Students can sign in effortlessly with Google, ask questions, and receive clear,
 - **Chat History:** Grouped conversation sessions similar to ChatGPT, allowing students to revisit and continue past study sessions.
 - **User Profiles:** Track questions asked and view subject breakdowns.
 - **Customizable Settings:** Toggle between Dark and Light themes, set a default subject, and manage history.
+- **Bulletproof Error Handling:** Global error handlers, per-route try/except guards, and database fallbacks ensure no user ever sees a raw Internal Server Error — every failure shows a clean, friendly message with automatic recovery.
 - **Responsive Design:** Fully mobile-friendly UI that works seamlessly across all devices.
 
 ## 🛠️ Tech Stack

@@ -289,7 +289,10 @@ def ask_groq_vision(messages, image_b64, mime_type):
 
 
 def ask_gemini_vision(messages, image_b64=None, mime_type=None, file_text=None):
-    """Call Gemini 2.0 Flash with an image using inlineData, or file content."""
+    """
+    Sends the messages array, an optional base64 image or file text to Gemini via REST API.
+    Uses the gemini-2.0-flash model to process the image/file along with the prompt.
+    """
     key = os.getenv("GEMINI_API_KEY", "").strip()
     print(f"DEBUG: ask_gemini_vision called. Key length: {len(key)}")
     if not key:
@@ -796,6 +799,7 @@ def dashboard():
                         # Treat as image
                         image_bytes = upload_file.read()
                         image_b64   = base64.b64encode(image_bytes).decode("utf-8")
+                        print(f"DEBUG: Base64 image parsed. Length: {len(image_b64)}")
                         image_mime  = upload_file.content_type or "image/jpeg"
                         upload_file.seek(0)
                         image_url = save_uploaded_image(upload_file, session["user"]["id"])

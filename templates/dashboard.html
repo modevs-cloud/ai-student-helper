@@ -257,6 +257,10 @@
     const q = textarea.value.trim();
     if (!q) return;
 
+    // Capture form data before clearing any inputs
+    const formData = new FormData(form);
+    formData.set("question", q); // ensure we send the captured string
+
     // 1. Prevent double clicks
     isSubmitting = true;
     sendBtn.disabled = true;
@@ -328,9 +332,6 @@
 
     // 4. Perform the AJAX request
     try {
-      const formData = new FormData(form);
-      formData.set("question", q); // ensure we send the captured string
-
       const res = await fetch(form.action, {
         method: "POST",
         headers: {

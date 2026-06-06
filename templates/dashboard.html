@@ -70,6 +70,13 @@
             </div>
             {% if model == 'gemini' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
           </button>
+          <button type="button" class="ch-menu-item model-item" data-val="gemini_vision" data-label="Gemini Vision" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
+            <div>
+              <div style="font-weight:600; color:#e5e5e5; display:flex; align-items:center; gap:4px;">Gemini Vision <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+              <div style="font-size:0.72rem; color:#666;">Read images &amp; files</div>
+            </div>
+            {% if model == 'gemini_vision' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
+          </button>
           {% endif %}
         </div>
       </div>
@@ -171,6 +178,14 @@
       <input type="hidden" name="model" id="model-hidden" value="{{ model if model else 'groq' }}">
 
       <div style="background:#111; border:1px solid #2a2a2a; border-radius:14px; padding:0.75rem 1rem; transition:border-color 0.18s;" id="input-box">
+        <div id="file-preview-container" style="display:none; margin-bottom:8px; position:relative; width:fit-content;">
+          <img id="image-preview" src="" style="display:none; height:60px; border-radius:6px; border:1px solid #333; object-fit:cover;">
+          <div id="doc-preview" style="display:none; height:60px; padding:0 15px; background:#1e1e1e; border:1px solid #333; border-radius:6px; align-items:center; color:#ccc; font-size:0.8rem; gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <span id="doc-name"></span>
+          </div>
+          <button type="button" id="remove-file-btn" style="position:absolute; top:-6px; right:-6px; background:#f87171; color:#000; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center;">&times;</button>
+        </div>
         <textarea
           name="question"
           id="question-input"
@@ -182,6 +197,10 @@
         ></textarea>
         <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.5rem;">
           <div style="display:flex; align-items:center; gap:0.6rem;">
+            <input type="file" id="file-upload" name="file" accept=".jpg,.jpeg,.png,.gif,.pdf,.txt,.md,.csv" style="display:none;">
+            <label for="file-upload" id="file-upload-btn" title="Switch to Gemini Vision to upload files" style="display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:#1a1a1a; cursor:not-allowed; opacity:0.5; color:#888; transition:all 0.2s;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </label>
             <span style="font-size:0.72rem; color:#444; display:flex; align-items:center; gap:5px;">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M8 11l3 3L16 8"/></svg>
               ⌘ Enter to send
@@ -247,6 +266,20 @@
     const msgsContainer = document.getElementById('ch-messages');
 
     // 2. Optimistically render the user's question bubble
+    const fileInputSubmit = document.getElementById('file-upload');
+    let imgPreviewHtml = '';
+    if (fileInputSubmit && fileInputSubmit.files && fileInputSubmit.files[0]) {
+      const file = fileInputSubmit.files[0];
+      if (file.type.startsWith('image/')) {
+        const imgPreviewSrc = document.getElementById('image-preview').src;
+        if (imgPreviewSrc) {
+           imgPreviewHtml = `<img src="${imgPreviewSrc}" alt="Attached image" style="display:block; max-width:220px; max-height:180px; border-radius:8px; margin-bottom:0.5rem; object-fit:cover; border:2px solid rgba(0,0,0,0.15);">`;
+        }
+      } else {
+         imgPreviewHtml = `<div style="display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.1); padding:6px 10px; border-radius:6px; margin-bottom:0.5rem; font-size:0.8rem;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${escapeHtml(file.name)}</div>`;
+      }
+    }
+
     const userBubble = document.createElement('div');
     userBubble.style.display = 'flex';
     userBubble.style.justifyContent = 'flex-end';
@@ -254,14 +287,17 @@
     userBubble.style.gap = '10px';
     userBubble.style.marginBottom = '20px';
     userBubble.innerHTML = `
-      <div style="max-width:72%; background:#2dd4bf; color:#0a0a0a; border-radius:16px 16px 4px 16px; padding:0.75rem 1.1rem; font-size:0.9rem; line-height:1.55; font-weight:500; white-space:pre-wrap;">${escapeHtml(q)}</div>
+      <div style="max-width:72%; background:#2dd4bf; color:#0a0a0a; border-radius:16px 16px 4px 16px; padding:0.75rem 1.1rem; font-size:0.9rem; line-height:1.55; font-weight:500; white-space:pre-wrap;">${imgPreviewHtml}${escapeHtml(q)}</div>
     `;
     if (msgsContainer) msgsContainer.appendChild(userBubble);
     
-    // Clear textarea and update height immediately
+    // Clear form inputs and update UI immediately
     textarea.value = '';
     textarea.style.height = '44px';
     charCount.textContent = '0 / 2000';
+    if (fileInputSubmit) fileInputSubmit.value = '';
+    const previewContainerSubmit = document.getElementById('file-preview-container');
+    if (previewContainerSubmit) previewContainerSubmit.style.display = 'none';
 
     // 3. Render a "Thinking" AI bubble placeholder
     const aiBubbleContainer = document.createElement('div');
@@ -399,8 +435,64 @@
     if (emptyModel) {
       let labelText = 'Groq Llama 3';
       if (modelVal === 'gemini') labelText = 'Gemini';
+      if (modelVal === 'gemini_vision') labelText = 'Gemini Vision';
       emptyModel.textContent = labelText;
     }
+
+    const fileBtn = document.getElementById('file-upload-btn');
+    const fileInput = document.getElementById('file-upload');
+    if (fileBtn && fileInput) {
+      if (modelVal === 'gemini_vision') {
+        fileBtn.style.cursor = 'pointer';
+        fileBtn.style.opacity = '1';
+        fileBtn.style.color = '#2dd4bf';
+        fileBtn.title = 'Upload image, PDF, or text file';
+        fileInput.disabled = false;
+      } else {
+        fileBtn.style.cursor = 'not-allowed';
+        fileBtn.style.opacity = '0.5';
+        fileBtn.style.color = '#888';
+        fileBtn.title = 'Switch to Gemini Vision to upload files';
+        fileInput.disabled = true;
+      }
+    }
+  }
+
+  // File Upload Preview Logic
+  const fileInput = document.getElementById('file-upload');
+  const previewContainer = document.getElementById('file-preview-container');
+  const imgPreview = document.getElementById('image-preview');
+  const docPreview = document.getElementById('doc-preview');
+  const docName = document.getElementById('doc-name');
+  const removeFileBtn = document.getElementById('remove-file-btn');
+
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        previewContainer.style.display = 'none';
+        return;
+      }
+      previewContainer.style.display = 'block';
+      if (file.type.startsWith('image/')) {
+        imgPreview.style.display = 'block';
+        docPreview.style.display = 'none';
+        const reader = new FileReader();
+        reader.onload = (e) => { imgPreview.src = e.target.result; };
+        reader.readAsDataURL(file);
+      } else {
+        imgPreview.style.display = 'none';
+        docPreview.style.display = 'flex';
+        docName.textContent = file.name;
+      }
+    });
+  }
+
+  if (removeFileBtn) {
+    removeFileBtn.addEventListener('click', () => {
+      fileInput.value = '';
+      previewContainer.style.display = 'none';
+    });
   }
 
   // Scroll dropdown menus

@@ -1,7 +1,4 @@
 import os
-import json
-import hashlib
-import base64
 import uuid
 import requests as req
 from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify, g
@@ -93,25 +90,9 @@ class Message(db.Model):
     question = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=False)
     model_used = db.Column(db.String(100))
-    image_url = db.Column(db.String(255), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ─── Uploads directory ────────────────────────────────────────────────────────
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "static", "uploads")
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-def save_uploaded_image(file_obj, user_id):
-    """Save an uploaded image to disk and return its web-accessible URL path."""
-    user_dir = os.path.join(UPLOADS_DIR, str(user_id))
-    os.makedirs(user_dir, exist_ok=True)
-    ext = os.path.splitext(file_obj.filename)[1].lower()
-    if ext not in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
-        ext = ".jpg"
-    filename = f"{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(user_dir, filename)
-    file_obj.save(filepath)
-    return f"/static/uploads/{user_id}/{filename}"
 
 # ─── Google OAuth blueprint ───────────────────────────────────────────────────
 google_bp = make_google_blueprint(
@@ -130,7 +111,7 @@ SUBJECTS = ["Math", "Science", "Computer Science", "History", "English", "Other"
 
 # ─── Database Helpers ─────────────────────────────────────────────────────────
 
-import hashlib
+
 
 def make_mock_id(email):
     h = hashlib.sha256(email.lower().encode("utf-8")).hexdigest()
@@ -169,8 +150,7 @@ def get_session_history():
             "question": m.question,
             "answer": m.answer,
             "model": m.model_used.capitalize() if m.model_used else "Unknown",
-            "time": m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now",
-            "image_url": m.image_url
+            "time": m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now"
         })
         
         if len(chats) >= 100:
@@ -198,8 +178,7 @@ def get_session_active_chat():
         "question": m.question,
         "answer": m.answer,
         "model": m.model_used.capitalize() if m.model_used else "Unknown",
-        "time": m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now",
-        "image_url": m.image_url
+        "time": m.created_at.strftime("%b %d, %Y %I:%M %p") if m.created_at else "Just now"
     } for m in msgs]
 
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
@@ -246,86 +225,6 @@ def api_login_required(f):
 
 
 # ─── AI helper ────────────────────────────────────────────────────────────────
-
-def ask_groq_vision(messages, image_b64, mime_type):
-    """Call Groq vision model (llama-3.2-11b-vision-instruct) with an image."""
-    key = os.getenv("GROQ_API_KEY", "").strip()
-    print(f"DEBUG: ask_groq_vision called. Key length: {len(key)}")
-    if not key:
-        return None
-    # Build vision messages: inject image into the last user turn
-    vision_messages = []
-    for idx, msg in enumerate(messages):
-        if msg["role"] == "user" and idx == len(messages) - 1:
-            vision_messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_b64}"}},
-                    {"type": "text", "text": msg["content"]},
-                ],
-            })
-        else:
-            vision_messages.append(msg)
-    try:
-        resp = req.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.2-11b-vision-instruct",
-                "messages": vision_messages,
-                "max_tokens": 4000,
-            },
-            timeout=45,
-        )
-        if resp.ok:
-            return resp.json()["choices"][0]["message"]["content"].strip()
-        else:
-            print(f"Groq vision failed with status {resp.status_code}: {resp.text}")
-    except Exception as e:
-        print(f"Groq vision error: {e}")
-    return None
-
-
-def ask_gemini_vision(messages, image_b64, mime_type):
-    """Call Gemini 1.5 Flash with an image using inlineData."""
-    key = os.getenv("GEMINI_API_KEY", "").strip()
-    print(f"DEBUG: ask_gemini_vision called. Key length: {len(key)}")
-    if not key:
-        return None
-    # Convert messages to Gemini format; inject image into last user turn
-    contents = []
-    system_text = ""
-    for idx, msg in enumerate(messages):
-        if msg["role"] == "system":
-            system_text = msg["content"]
-        elif msg["role"] == "user":
-            if idx == len(messages) - 1:  # Last user message gets the image
-                parts = []
-                if system_text:
-                    parts.append({"text": system_text})
-                    system_text = ""
-                parts.append({"inline_data": {"mime_type": mime_type, "data": image_b64}})
-                parts.append({"text": msg["content"]})
-                contents.append({"role": "user", "parts": parts})
-            else:
-                text = (system_text + "\n\n" + msg["content"]) if system_text else msg["content"]
-                contents.append({"role": "user", "parts": [{"text": text}]})
-                system_text = ""
-        elif msg["role"] == "assistant":
-            contents.append({"role": "model", "parts": [{"text": msg["content"]}]})
-    try:
-        resp = req.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
-            json={"contents": contents},
-            timeout=45,
-        )
-        if resp.ok:
-            return resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-        else:
-            print(f"Gemini vision failed with status {resp.status_code}: {resp.text}")
-    except Exception as e:
-        print(f"Gemini vision error: {e}")
-    return None
 
 
 def ask_groq(messages):
@@ -387,13 +286,11 @@ def ask_gemini(messages):
 
 
 
-def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, image_mime=None):
+def ask_ai(question, subject, model="groq", chat_history=None):
     """
     Ask the AI — Groq Llama 3 is the primary model, Gemini is the automatic silent fallback.
     If the chosen model fails for any reason, the other is tried automatically.
     chat_history: list of dicts with 'question' and 'answer' keys.
-    image_b64: base64-encoded image bytes (optional).
-    image_mime: MIME type of the image e.g. 'image/jpeg' (optional).
     """
     system_content = (
         "You are 'AI Student Helper' (also known as 'I Student Helper'), a premium AI-powered homework helper "
@@ -424,25 +321,12 @@ def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, i
     })
 
     # ── Route to models: Groq = primary, Gemini = silent automatic fallback ─────────
-    if image_b64 and image_mime:
-        # Both vision-capable models; try chosen one first, then the other
-        if model == "gemini":
-            answer = (ask_gemini_vision(messages, image_b64, image_mime)
-                      or ask_groq_vision(messages, image_b64, image_mime)
-                      or ask_gemini(messages)
-                      or ask_groq(messages))
-        else:  # groq (default)
-            answer = (ask_groq_vision(messages, image_b64, image_mime)
-                      or ask_gemini_vision(messages, image_b64, image_mime)
-                      or ask_groq(messages)
-                      or ask_gemini(messages))
-    else:
-        if model == "gemini":
-            # Gemini first, Groq as silent fallback
-            answer = ask_gemini(messages) or ask_groq(messages)
-        else:  # groq (default)
-            # Groq first, Gemini as silent fallback
-            answer = ask_groq(messages) or ask_gemini(messages)
+    if model == "gemini":
+        # Gemini first, Groq as silent fallback
+        answer = ask_gemini(messages) or ask_groq(messages)
+    else:  # groq (default)
+        # Groq first, Gemini as silent fallback
+        answer = ask_groq(messages) or ask_gemini(messages)
 
     if not answer:
         answer = (
@@ -762,20 +646,7 @@ def dashboard():
         if not question:
             error = "Please type a question before clicking Get Help."
         else:
-            # Handle optional image upload
-            image_b64  = None
-            image_mime = None
-            image_url  = None
-            image_file = request.files.get("image")
-            if image_file and image_file.filename:
-                try:
-                    image_bytes = image_file.read()
-                    image_b64   = base64.b64encode(image_bytes).decode("utf-8")
-                    image_mime  = image_file.content_type or "image/jpeg"
-                    image_file.seek(0)
-                    image_url = save_uploaded_image(image_file, session["user"]["id"])
-                except Exception as e:
-                    print(f"Image upload error: {e}")
+
 
             try:
                 import threading as _threading
@@ -788,8 +659,7 @@ def dashboard():
                 def _run():
                     _result["answer"] = ask_ai(
                         question, subject, model,
-                        chat_history=current_chat,
-                        image_b64=image_b64, image_mime=image_mime
+                        chat_history=current_chat
                     )
                 _t = _threading.Thread(target=_run, daemon=True)
                 _t.start()
@@ -817,7 +687,6 @@ def dashboard():
                         question=question,
                         answer=answer,
                         model_used=model,
-                        image_url=image_url,
                         is_active=True
                     )
                     db.session.add(msg)
@@ -851,8 +720,7 @@ def dashboard():
                 "question": question,
                 "answer": answer,
                 "model": model.capitalize() if model else "Unknown",
-                "time": time_str,
-                "image_url": image_url
+                "time": time_str
             })
 
     return render_template(
@@ -863,9 +731,6 @@ def dashboard():
         default_subject=settings.get("default_subject", "Math"),
         groq_enabled=bool(os.getenv("GROQ_API_KEY", "").strip()),
         gemini_enabled=bool(os.getenv("GEMINI_API_KEY", "").strip()),
-        kimi_enabled=bool(os.getenv("KIMI_API_KEY", "").strip()),
-        nvidia_enabled=bool(os.getenv("NVIDIA_API_KEY", "").strip()),
-        gemma_enabled=bool(os.getenv("GEMMA_API_KEY", "").strip()),
         chat_history=get_session_active_chat(),
         is_new_answer=is_new_answer,
         session_token=session_token,
@@ -1004,9 +869,6 @@ def settings():
         settings=settings,
         groq_enabled=bool(os.getenv("GROQ_API_KEY", "").strip()),
         gemini_enabled=bool(os.getenv("GEMINI_API_KEY", "").strip()),
-        kimi_enabled=bool(os.getenv("KIMI_API_KEY", "").strip()),
-        nvidia_enabled=bool(os.getenv("NVIDIA_API_KEY", "").strip()),
-        gemma_enabled=bool(os.getenv("GEMMA_API_KEY", "").strip()),
     )
 
 

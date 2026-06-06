@@ -142,4 +142,4 @@ Follow these steps to run the application on your local machine.
 - *Associate of Science in Computer Science — Community College of Aurora (2026)*
 - *Currently pursuing BS in Computer Science at MSU Denver*
 - **GitHub:** [@modevs-cloud](https://github.com/modevs-cloud)
-- **Email:** [24kdev02@gmail.com](mailto:24kdev02@gmail.com)
+- **Email:** [mohammadhu1058@gmail.com](mailto:mohammadhu1058@gmail.com)

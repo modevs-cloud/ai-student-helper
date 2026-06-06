@@ -61,16 +61,15 @@
           <p style="font-size:0.75rem; color:#555; margin:0 0 0.4rem;">Choose the AI engine that powers your answers</p>
           <select id="sett-model" name="preferred_model" class="sett-select">
             {% set current_model = settings.get('preferred_model', 'groq') %}
-            <option value="groq"          {% if current_model == 'groq' %}selected{% endif %}>Groq Llama 3</option>
-            <option value="gemini"        {% if current_model == 'gemini' %}selected{% endif %}>Gemini</option>
-            <option value="gemini_vision" {% if current_model == 'gemini_vision' %}selected{% endif %}>Gemini Vision</option>
+            <option value="groq"   {% if current_model == 'groq' %}selected{% endif %}>Groq Llama 3</option>
+            <option value="gemini" {% if current_model == 'gemini' %}selected{% endif %}>Gemini</option>
           </select>
         </div>
       </div>
 
       <!-- Model cards: Groq and Gemini only -->
       <div class="sett-model-cards">
-        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'groq' %}active{% endif %}" data-model="groq" role="button" tabindex="0" aria-label="Select Groq Llama 3">
+        <div class="sett-model-card {% if settings.get('preferred_model','groq') != 'gemini' %}active{% endif %}" data-model="groq" role="button" tabindex="0" aria-label="Select Groq Llama 3">
           <div class="sett-model-icon">⚡</div>
           <div>
             <div class="sett-model-name">Groq Llama 3 <span style="font-size:0.65rem; background:rgba(45,212,191,0.12); color:#2dd4bf; border:1px solid rgba(45,212,191,0.3); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">PRIMARY</span></div>
@@ -82,13 +81,6 @@
           <div>
             <div class="sett-model-name">Gemini <span style="font-size:0.65rem; background:rgba(45,212,191,0.08); color:#6ee7b7; border:1px solid rgba(45,212,191,0.2); border-radius:4px; padding:1px 6px; margin-left:5px; font-weight:700;">FALLBACK</span></div>
             <div class="sett-model-desc">Google's advanced model — excellent for complex reasoning. Also serves as the automatic fallback when Groq is primary.</div>
-          </div>
-        </div>
-        <div class="sett-model-card {% if settings.get('preferred_model','groq') == 'gemini_vision' %}active{% endif %}" data-model="gemini_vision" role="button" tabindex="0" aria-label="Select Gemini Vision">
-          <div class="sett-model-icon">🖼️</div>
-          <div>
-            <div class="sett-model-name">Gemini Vision</div>
-            <div class="sett-model-desc">Multi-modal model that supports analyzing images, PDFs, and text files along with your questions.</div>
           </div>
         </div>
       </div>

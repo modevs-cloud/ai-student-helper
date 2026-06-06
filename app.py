@@ -4,8 +4,6 @@ import hashlib
 import base64
 import uuid
 import requests as req
-import pypdf
-import io
 from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify, g
 from flask_dance.contrib.google import make_google_blueprint, google
 from dotenv import load_dotenv
@@ -288,31 +286,25 @@ def ask_groq_vision(messages, image_b64, mime_type):
     return None
 
 
-def ask_gemini_vision(messages, image_b64=None, mime_type=None, file_text=None):
-    """
-    Sends the messages array, an optional base64 image or file text to Gemini via REST API.
-    Uses the gemini-2.0-flash model to process the image/file along with the prompt.
-    """
+def ask_gemini_vision(messages, image_b64, mime_type):
+    """Call Gemini 1.5 Flash with an image using inlineData."""
     key = os.getenv("GEMINI_API_KEY", "").strip()
     print(f"DEBUG: ask_gemini_vision called. Key length: {len(key)}")
     if not key:
         return None
-    # Convert messages to Gemini format; inject image/text into last user turn
+    # Convert messages to Gemini format; inject image into last user turn
     contents = []
     system_text = ""
     for idx, msg in enumerate(messages):
         if msg["role"] == "system":
             system_text = msg["content"]
         elif msg["role"] == "user":
-            if idx == len(messages) - 1:  # Last user message gets the attachment
+            if idx == len(messages) - 1:  # Last user message gets the image
                 parts = []
                 if system_text:
                     parts.append({"text": system_text})
                     system_text = ""
-                if image_b64 and mime_type:
-                    parts.append({"inline_data": {"mime_type": mime_type, "data": image_b64}})
-                if file_text:
-                    parts.append({"text": f"--- FILE CONTENT ---\n{file_text}\n--- END FILE CONTENT ---\n\n"})
+                parts.append({"inline_data": {"mime_type": mime_type, "data": image_b64}})
                 parts.append({"text": msg["content"]})
                 contents.append({"role": "user", "parts": parts})
             else:
@@ -323,7 +315,7 @@ def ask_gemini_vision(messages, image_b64=None, mime_type=None, file_text=None):
             contents.append({"role": "model", "parts": [{"text": msg["content"]}]})
     try:
         resp = req.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}",
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}",
             json={"contents": contents},
             timeout=45,
         )
@@ -395,14 +387,13 @@ def ask_gemini(messages):
 
 
 
-def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, image_mime=None, file_text=None):
+def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, image_mime=None):
     """
     Ask the AI — Groq Llama 3 is the primary model, Gemini is the automatic silent fallback.
     If the chosen model fails for any reason, the other is tried automatically.
     chat_history: list of dicts with 'question' and 'answer' keys.
     image_b64: base64-encoded image bytes (optional).
     image_mime: MIME type of the image e.g. 'image/jpeg' (optional).
-    file_text: Extracted text from PDF or txt (optional).
     """
     system_content = (
         "You are 'AI Student Helper' (also known as 'I Student Helper'), a premium AI-powered homework helper "
@@ -433,24 +424,20 @@ def ask_ai(question, subject, model="groq", chat_history=None, image_b64=None, i
     })
 
     # ── Route to models: Groq = primary, Gemini = silent automatic fallback ─────────
-    if image_b64 or file_text:
-        # Vision/File capable models; try chosen one first, then the other
-        if model == "gemini_vision":
-            answer = ask_gemini_vision(messages, image_b64, image_mime, file_text)
-        elif model == "gemini":
-            answer = (ask_gemini_vision(messages, image_b64, image_mime, file_text)
+    if image_b64 and image_mime:
+        # Both vision-capable models; try chosen one first, then the other
+        if model == "gemini":
+            answer = (ask_gemini_vision(messages, image_b64, image_mime)
                       or ask_groq_vision(messages, image_b64, image_mime)
                       or ask_gemini(messages)
                       or ask_groq(messages))
         else:  # groq (default)
             answer = (ask_groq_vision(messages, image_b64, image_mime)
-                      or ask_gemini_vision(messages, image_b64, image_mime, file_text)
+                      or ask_gemini_vision(messages, image_b64, image_mime)
                       or ask_groq(messages)
                       or ask_gemini(messages))
     else:
-        if model == "gemini_vision":
-            answer = ask_gemini_vision(messages) or ask_gemini(messages) or ask_groq(messages)
-        elif model == "gemini":
+        if model == "gemini":
             # Gemini first, Groq as silent fallback
             answer = ask_gemini(messages) or ask_groq(messages)
         else:  # groq (default)
@@ -775,36 +762,20 @@ def dashboard():
         if not question:
             error = "Please type a question before clicking Get Help."
         else:
-            # Handle optional image/file upload
+            # Handle optional image upload
             image_b64  = None
             image_mime = None
             image_url  = None
-            file_text  = None
-            
-            # The form could send "file" or "image"
-            upload_file = request.files.get("file") or request.files.get("image")
-            if upload_file and upload_file.filename:
-                ext = upload_file.filename.split('.')[-1].lower()
+            image_file = request.files.get("image")
+            if image_file and image_file.filename:
                 try:
-                    if ext in ['pdf']:
-                        pdf_reader = pypdf.PdfReader(io.BytesIO(upload_file.read()))
-                        file_text = ""
-                        for page in pdf_reader.pages:
-                            file_text += page.extract_text() + "\n"
-                        image_url = "https://cdn-icons-png.flaticon.com/512/3143/3143460.png" # generic document icon
-                    elif ext in ['txt', 'md', 'csv']:
-                        file_text = upload_file.read().decode('utf-8')
-                        image_url = "https://cdn-icons-png.flaticon.com/512/3143/3143460.png"
-                    else:
-                        # Treat as image
-                        image_bytes = upload_file.read()
-                        image_b64   = base64.b64encode(image_bytes).decode("utf-8")
-                        print(f"DEBUG: Base64 image parsed. Length: {len(image_b64)}")
-                        image_mime  = upload_file.content_type or "image/jpeg"
-                        upload_file.seek(0)
-                        image_url = save_uploaded_image(upload_file, session["user"]["id"])
+                    image_bytes = image_file.read()
+                    image_b64   = base64.b64encode(image_bytes).decode("utf-8")
+                    image_mime  = image_file.content_type or "image/jpeg"
+                    image_file.seek(0)
+                    image_url = save_uploaded_image(image_file, session["user"]["id"])
                 except Exception as e:
-                    print(f"File upload error: {e}")
+                    print(f"Image upload error: {e}")
 
             try:
                 import threading as _threading
@@ -818,7 +789,7 @@ def dashboard():
                     _result["answer"] = ask_ai(
                         question, subject, model,
                         chat_history=current_chat,
-                        image_b64=image_b64, image_mime=image_mime, file_text=file_text
+                        image_b64=image_b64, image_mime=image_mime
                     )
                 _t = _threading.Thread(target=_run, daemon=True)
                 _t.start()

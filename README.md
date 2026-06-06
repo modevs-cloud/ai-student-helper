@@ -113,9 +113,7 @@ Follow these steps to run the application on your local machine.
    DATABASE_URL=postgresql://your_neon_connection_string
    GROQ_API_KEY=your_groq_key
    GEMINI_API_KEY=your_gemini_key
-   # Optional fallback models
-   KIMI_API_KEY=your_kimi_key
-   NVIDIA_API_KEY=your_nvidia_key
+
    ```
 
 5. **Run the application:**

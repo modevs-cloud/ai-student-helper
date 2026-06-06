@@ -495,6 +495,21 @@
     });
   }
 
+  // Handle Paste Events for Images/Files
+  document.addEventListener('paste', (e) => {
+    const hiddenModel = document.getElementById('model-hidden');
+    if (hiddenModel && hiddenModel.value !== 'gemini_vision') return; // only allow paste if in vision mode
+
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const file = e.clipboardData.files[0];
+      if (file.type.startsWith('image/') || file.name.endsWith('.pdf') || file.type.startsWith('text/')) {
+        fileInput.files = e.clipboardData.files;
+        const event = new Event('change', { bubbles: true });
+        fileInput.dispatchEvent(event);
+      }
+    }
+  });
+
   // Scroll dropdown menus
   function setupDropdown(toggleId, menuId, items, labelId, hiddenId, formatFn) {
     const toggle = document.getElementById(toggleId);

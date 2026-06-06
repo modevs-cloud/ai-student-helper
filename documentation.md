@@ -48,7 +48,7 @@ Python with Flask. This handles everything that happens behind the scenes like s
 Authentication — how students log in:
 Google Sign In using Flask-Dance. Students click one button and sign in with their Google account. No passwords needed.
 AI — what answers the questions:
-Groq API (Llama 3) as the first choice and Gemini API as the backup. Both are completely free.
+Groq API (Llama 3) as the first choice and Gemini API as the backup. Gemini Vision is also available for analyzing uploaded files, PDFs, and images (including pictures pasted directly from the clipboard). All models are completely free.
 Storage — where data is saved:
 Flask-Session. Saves the student's name, login state, question history, and settings while they are using the app.
 

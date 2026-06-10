@@ -18,7 +18,7 @@
     </div>
   </div>
 
-  <!-- Search & filter row -->
+  <!-- Search & filter row: Lets the user type to find a specific chat -->
   <div class="hist-controls">
     <div class="hist-search-wrap">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <!-- Subject filter chips -->
+  <!-- Subject filter chips: Buttons to show only Math chats, Science chats, etc. -->
   <div class="hist-filter-chips" role="group" aria-label="Filter by subject">
     <button class="hist-chip active" data-filter="all" id="filter-all">All</button>
     <button class="hist-chip" data-filter="Math" id="filter-math">Mathematics</button>
@@ -37,9 +37,11 @@
     <button class="hist-chip" data-filter="Other" id="filter-other">Other</button>
   </div>
 
-  <!-- History list -->
+  <!-- History list: This is where we display the actual chat cards -->
   <div class="hist-list" id="hist-list" role="list">
+    <!-- Jinja2 logic: Check if the 'history' list from app.py has anything in it -->
     {% if history %}
+      <!-- Jinja2 loop: For every chat in the history list, we create a card -->
       {% for item in history %}
       <article class="hist-card" role="listitem" data-subject="{{ item.subject }}" data-question="{{ item.question|lower }}" onclick="window.location.href='{{ url_for('dashboard', load_chat_id=item.chat_id) }}'" style="cursor: pointer;">
         
@@ -81,6 +83,7 @@
       </article>
       {% endfor %}
     {% else %}
+      <!-- If the history list is empty, we show this placeholder message -->
       <div class="hist-empty" role="status">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" stroke-width="1.5" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         <h3>No conversations yet</h3>

@@ -47,6 +47,10 @@ with app.app_context():
         print(f"Startup Migration info/error: {e}")
 
 class User(db.Model):
+    """
+    This is the User table in our database.
+    It stores all the account details and preferences for people who sign up.
+    """
     id = db.Column(db.Integer, primary_key=True)
     google_id = db.Column(db.String(255), unique=True, nullable=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
@@ -60,6 +64,10 @@ class User(db.Model):
     messages = db.relationship('Message', backref='user', lazy=True)
 
 class Message(db.Model):
+    """
+    This is the Message table in our database.
+    It saves the chat history (the question the student asked, and the answer the AI gave).
+    """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     chat_id = db.Column(db.String(36), nullable=True)
@@ -93,6 +101,10 @@ SUBJECTS = ["Math", "Science", "Computer Science", "History", "English", "Other"
 
 
 def get_user_record():
+    """
+    Looks up the currently logged-in user in the database.
+    Returns the User object if found, or None if they are not logged in.
+    """
     if "user" not in session: 
         return None
     email = session["user"].get("email")
@@ -101,6 +113,10 @@ def get_user_record():
     return u
 
 def get_session_history():
+    """
+    Gets a list of past chats for the logged-in user to display on the History page.
+    It groups them by chat_id so we only show the first message of each conversation.
+    """
     u = get_user_record()
     if not u: return []
     msgs = Message.query.filter_by(user_id=u.id).order_by(Message.created_at.desc()).all()
@@ -131,6 +147,10 @@ def get_session_history():
     return chats
 
 def get_session_active_chat():
+    """
+    Gets all the messages for the current conversation the user is looking at.
+    This lets them read their previous back-and-forth messages on the Dashboard.
+    """
     u = get_user_record()
     if not u: return []
     
@@ -156,9 +176,16 @@ def get_session_active_chat():
 # ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 def get_current_user():
+    """
+    Quickly checks if a user is currently logged in via their session cookie.
+    """
     return session.get("user")
 
 def login_required(f):
+    """
+    This is a special wrapper (decorator) for our private routes (like Dashboard).
+    If a user is not logged in, it instantly kicks them back to the landing page.
+    """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user" not in session:
@@ -178,7 +205,10 @@ def login_required(f):
 
 
 def ask_groq(messages):
-    """Call Groq API (Llama 3) with a messages list. Returns answer string or None."""
+    """
+    Sends the user's question to the Groq API (using the Llama 3 model).
+    Returns the AI's answer, or None if it fails.
+    """
     key = os.getenv("GROQ_API_KEY", "").strip()
     if not key:
         return None
@@ -203,13 +233,17 @@ def ask_groq(messages):
 
 
 def ask_gemini(messages):
-    """Call Gemini API with a messages list. Converts to Gemini multi-turn format."""
+    """
+    Sends the user's question to the Google Gemini API.
+    This acts as our backup AI if Groq is down.
+    """
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         return None
     try:
         contents = []
         system_text = ""
+        # Convert our standard message format into Gemini's specific format
         for msg in messages:
             if msg["role"] == "system":
                 system_text = msg["content"]
@@ -236,9 +270,8 @@ def ask_gemini(messages):
 
 def ask_ai(question, subject, model="groq", chat_history=None):
     """
-    Ask the AI — Groq Llama 3 is the primary model, Gemini is the automatic silent fallback.
-    If the chosen model fails for any reason, the other is tried automatically.
-    chat_history: list of dicts with 'question' and 'answer' keys.
+    This is our main AI function. It takes the student's question and past chat history,
+    builds a prompt, and asks either Groq or Gemini for the answer.
     """
     system_content = (
         "You are 'AI Student Helper' (also known as 'I Student Helper'), a premium AI-powered homework helper "
@@ -295,9 +328,17 @@ def ping():
 
 @app.route("/")
 def landing():
+    """
+    This is the very first page people see.
+    If they are already logged in, we send them straight to the Dashboard.
+    If not, we show them the Welcome page.
+    """
     try:
+        # Step 1: Check if the user is already logged in
         if get_current_user():
             return redirect(url_for("dashboard"))
+            
+        # Step 2: Show the landing page
         return render_template("landing.html")
     except Exception as e:
         print(f"ERROR /landing: {e}")
@@ -306,10 +347,16 @@ def landing():
 
 @app.route("/after-login")
 def after_login():
+    """
+    Google sends the user here after they click 'Sign in with Google'.
+    We verify their Google info and log them in or create an account for them.
+    """
     try:
+        # Step 1: Make sure Google actually authorized them
         if not google.authorized:
             return redirect(url_for("google.login"))
 
+        # Step 2: Get their email and name from Google
         resp = google.get("/oauth2/v2/userinfo")
         if not resp.ok:
             flash("Could not fetch your Google account info. Please try again.")
@@ -318,6 +365,7 @@ def after_login():
         info = resp.json()
         google_id = str(info.get("id"))
 
+        # Step 3: Save their basic Google info into their session (browser cookie)
         session["user"] = {
             "email":   info.get("email"),
             "name":    info.get("name"),
@@ -325,7 +373,7 @@ def after_login():
             "id":      google_id,
         }
 
-        # ── Check if we have saved data for this user ─────────────────────────────
+        # Step 4: Check if they already have an account in our database
         try:
             saved = User.query.filter_by(google_id=google_id).first()
             if not saved and info.get("email"):
@@ -338,6 +386,7 @@ def after_login():
             print(f"ERROR after_login DB lookup: {db_err}")
             saved = None
 
+        # Step 5: Send them to Dashboard if they exist, otherwise to Setup screen
         if saved:
             session["display_name"] = f"{saved.first_name} {saved.last_name}".strip()
             session["settings"]     = saved.settings or {"default_subject": saved.default_subject or "Math"}
@@ -352,19 +401,27 @@ def after_login():
 
 @app.route("/setup", methods=["GET", "POST"])
 def setup():
+    """
+    This is the final step of creating an account.
+    We ask them for their name and favorite subject before going to the dashboard.
+    """
     try:
+        # Step 1: Make sure they are partially logged in from Google or Sign Up
         if "user" not in session:
             return redirect(url_for("landing"))
             
         if request.method == "POST":
+            # Step 2: Get the info they typed in the form
             first   = request.form.get("first_name", "").strip()
             last    = request.form.get("last_name", "").strip()
             subject = request.form.get("default_subject", "Math")
+            
             if first:
                 display_name = f"{first} {last}".strip()
                 session["display_name"] = display_name
                 session["settings"] = {"default_subject": subject}
                 
+                # Step 3: Save their new account in the database
                 try:
                     email_clean = session["user"]["email"].lower().strip()
                     existing_user = User.query.filter_by(email=email_clean).first()
@@ -393,7 +450,10 @@ def setup():
                     flash("Could not save your profile. Please try again.")
                     return render_template("setup.html")
                     
+                # Step 4: Successfully saved! Go to the Dashboard
                 return redirect(url_for("dashboard"))
+                
+        # If it's a GET request, just show the setup form
         return render_template("setup.html")
     except Exception as e:
         print(f"ERROR /setup: {e}")
@@ -402,7 +462,11 @@ def setup():
 
 @app.route("/signin", methods=["GET", "POST"])
 def signin():
+    """
+    This page lets users log in with their email and password.
+    """
     try:
+        # Step 1: If they are already logged in, send them to Dashboard
         u_sess = get_current_user()
         if u_sess:
             try:
@@ -414,6 +478,7 @@ def signin():
                 session.clear()
             
         if request.method == "POST":
+            # Step 2: Get the email and password they typed
             email    = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
             
@@ -421,6 +486,7 @@ def signin():
                 flash("Please enter both email and password.")
                 return render_template("signin.html")
 
+            # Step 3: Look them up in the database
             try:
                 user_record = User.query.filter_by(email=email).first()
             except Exception as db_err:
@@ -432,10 +498,12 @@ def signin():
                 flash("No account found with this email.")
                 return render_template("signin.html")
                 
+            # Step 4: Check if the password matches
             if user_record.password != password:
                 flash("Incorrect password. Please try again.")
                 return render_template("signin.html")
                 
+            # Step 5: Success! Save their info in the session cookie and log them in
             session["user"] = {
                 "email": email,
                 "name": f"{user_record.first_name} {user_record.last_name}".strip(),
@@ -448,6 +516,7 @@ def signin():
             flash("Welcome back! 👋")
             return redirect(url_for("dashboard"))
             
+        # If it's a GET request, just show the Sign In page
         return render_template("signin.html")
     except Exception as e:
         print(f"ERROR /signin: {e}")
@@ -457,7 +526,11 @@ def signin():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
+    """
+    This page lets new users create an account with an email and password.
+    """
     try:
+        # Step 1: If they are already logged in, send them to Dashboard
         u_sess = get_current_user()
         if u_sess:
             try:
@@ -469,6 +542,7 @@ def signup():
                 session.clear()
             
         if request.method == "POST":
+            # Step 2: Read what they typed in the signup form
             first_name = request.form.get("first_name", "").strip()
             last_name  = request.form.get("last_name", "").strip()
             email      = request.form.get("email", "").strip().lower()
@@ -483,12 +557,14 @@ def signup():
                 flash("Passwords do not match. Please try again.")
                 return render_template("signup.html")
 
+            # Step 3: Check if this email is already registered
             try:
                 user_record = User.query.filter_by(email=email).first()
                 if user_record:
                     flash("An account with this email already exists.")
                     return render_template("signup.html")
                     
+                # Step 4: Create their new account in the database
                 mock_id = str(uuid.uuid4())
                 new_user = User(
                     google_id=None,
@@ -507,6 +583,7 @@ def signup():
                 flash("Could not create your account. Please try again.")
                 return render_template("signup.html")
             
+            # Step 5: Log them in automatically and send to Dashboard
             session["user"] = {
                 "email": email,
                 "name": f"{first_name} {last_name}".strip(),
@@ -519,6 +596,7 @@ def signup():
             flash("Account created successfully! Welcome! 🚀")
             return redirect(url_for("dashboard"))
             
+        # If GET request, show the empty signup form
         return render_template("signup.html")
     except Exception as e:
         print(f"ERROR /signup: {e}")
@@ -531,6 +609,12 @@ def signup():
 @app.route("/dashboard", methods=["GET", "POST"])
 @login_required
 def dashboard():
+    """
+    This is the main screen where the student asks questions and chats with the AI.
+    It handles getting the answer, saving history, and starting new chats.
+    """
+    
+    # Step 1: If the user clicked "Clear History"
     if request.args.get("clear"):
         u = get_user_record()
         if u:
@@ -542,6 +626,7 @@ def dashboard():
         flash("All chat history cleared permanently! 🗑️")
         return redirect(url_for("dashboard"))
 
+    # Step 2: If the user clicked "New Chat"
     if request.args.get("new_chat"):
         session.pop("active_chat_id", None)
         u = get_user_record()
@@ -557,7 +642,7 @@ def dashboard():
         flash("Chat session is already saved automatically to your history! 📁🚀")
         return redirect(url_for("dashboard"))
 
-    # Load past chat from history index
+    # Step 3: If the user clicked a past chat from the History tab
     load_id = request.args.get("load_chat_id")
     if load_id:
         session["active_chat_id"] = load_id
@@ -566,8 +651,11 @@ def dashboard():
         flash(f"Loaded past conversation from history! 📂")
         return redirect(url_for("dashboard"))
 
+    # Step 4: Gather all the data we need to show the Dashboard
     user     = get_current_user()
     u = get_user_record()
+    
+    # Make sure they have a session token for the mobile app to use
     if u and not u.session_token:
         u.session_token = uuid.uuid4().hex
         db.session.commit()
@@ -582,6 +670,7 @@ def dashboard():
 
     is_new_answer = False
 
+    # Step 5: If the user just asked a question (POST request)
     if request.method == "POST":
         question = request.form.get("question", "").strip()
         subject  = request.form.get("subject", "Math")
@@ -599,10 +688,10 @@ def dashboard():
             try:
                 import threading as _threading
 
-                # Pass current active_chat as history so the AI has memory
+                # Step 6: Get past messages so the AI remembers the conversation
                 current_chat = get_session_active_chat()
 
-                # Run ask_ai in a thread with a 60s hard timeout
+                # Step 7: Ask the AI for the answer! (We run it in a thread so it doesn't freeze the app)
                 _result = {"answer": None}
                 def _run():
                     _result["answer"] = ask_ai(
@@ -613,6 +702,7 @@ def dashboard():
                 _t.start()
                 _t.join(timeout=60)
 
+                # Step 8: Check if it failed or took too long
                 if _t.is_alive() or not _result["answer"]:
                     answer = (
                         "⚠️ The AI is temporarily unavailable or took too long to respond. "
@@ -621,11 +711,11 @@ def dashboard():
                 else:
                     answer = _result["answer"]
 
-                # Ensure we have an active chat ID
+                # Step 9: Make sure this chat session has a unique ID
                 if "active_chat_id" not in session:
                     session["active_chat_id"] = str(uuid.uuid4())
 
-                # Save to database
+                # Step 10: Save the question and answer to the database history
                 u = get_user_record()
                 if u:
                     msg = Message(
@@ -690,12 +780,18 @@ def dashboard():
 @app.route("/history")
 @login_required
 def history():
+    """
+    This page shows the student a list of all their past chat sessions.
+    """
     try:
+        # Step 1: Grab the past chats from the database
         try:
             history_data = get_session_history()
         except Exception as db_err:
             print(f"ERROR /history DB: {db_err}")
             history_data = []
+            
+        # Step 2: Show the History page with their data
         return render_template(
             "history.html",
             user=get_current_user(),
@@ -717,24 +813,34 @@ def history():
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile():
+    """
+    This page shows their profile stats (like how many questions they've asked),
+    and lets them update their name.
+    """
     try:
         user = get_current_user()
+        
+        # Step 1: If they typed a new name and clicked Save
         if request.method == "POST":
             full_name = request.form.get("first_name", "").strip()
             if full_name:
                 session["display_name"] = full_name
                 session.modified = True
                 try:
-                    _persist_user()
+                    _persist_user() # Saves to the database
                 except Exception as db_err:
                     print(f"ERROR /profile DB save: {db_err}")
                 flash("Name updated successfully! 🎉")
                 return redirect(url_for("profile"))
+                
+        # Step 2: Grab their chat history so we can count total questions
         try:
             history_data = get_session_history()
         except Exception as db_err:
             print(f"ERROR /profile DB history: {db_err}")
             history_data = []
+            
+        # Step 3: Show the Profile page
         return render_template(
             "profile.html",
             user=user,
@@ -773,11 +879,15 @@ def session_update():
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
+    """
+    This page lets the user change their preferences (dark mode, default subject, etc.)
+    and also lets them clear their chat history permanently.
+    """
     user     = get_current_user()
     settings = session.get("settings", {"default_subject": "Math"})
 
     if request.method == "POST":
-        # Handle "Clear Chat History" button
+        # Step 1: Did they click the "Clear Chat History" button?
         if request.form.get("clear_history"):
             u = get_user_record()
             if u:
@@ -786,7 +896,7 @@ def settings():
                 _persist_user()
                 flash("History cleared! 🗑️")
         else:
-            # Save all settings from the new form
+            # Step 2: They clicked "Save Settings", so we grab everything from the form
             settings["default_subject"]  = request.form.get("default_subject", "Math")
             settings["preferred_model"]  = request.form.get("preferred_model", "groq")
             settings["theme"]            = "dark" if request.form.get("dark_mode") else "light"
@@ -800,7 +910,7 @@ def settings():
             settings["show_timestamps"]  = bool(request.form.get("show_timestamps"))
             session["settings"] = settings
             
-            # Sync active model/subject immediately
+            # Step 3: Keep everything synchronized and save to database
             session["active_subject"] = settings["default_subject"]
             session["active_model"]   = settings["preferred_model"]
             
@@ -809,6 +919,7 @@ def settings():
             flash("Settings saved! ✅")
         return redirect(url_for("settings"))
 
+    # Step 4: Show the Settings page
     return render_template(
         "settings.html",
         user=user,
@@ -846,6 +957,9 @@ def logout():
 # ─── Helper: save current session to disk ────────────────────────────────────
 
 def _persist_user():
+    """
+    Saves the user's current session data (name, settings) directly into the database.
+    """
     u = get_user_record()
     if u:
         u.settings = session.get("settings", {"default_subject": "Math"})

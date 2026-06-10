@@ -21,7 +21,7 @@
 
 <div class="ch-page" style="display:flex; flex-direction:column; height:calc(100vh - 56px); background:#0a0a0a; font-family:'Inter',system-ui,sans-serif;">
 
-  <!-- ── Top Toolbar ── -->
+  <!-- ── Top Toolbar ── This holds the subject selector, model selector, and chat controls -->
   <div class="ch-toolbar" style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; border-bottom:1px solid #1e1e1e; background:#0d0d0d; flex-shrink:0;">
     
     <div style="display:flex; align-items:center; gap:0.6rem;">
@@ -97,11 +97,12 @@
     </div>
   </div>
 
-  <!-- ── Chat Messages ── -->
+  <!-- ── Chat Messages ── This area displays the conversation history -->
   <div class="ch-messages" id="ch-messages" style="flex:1; overflow-y:auto; padding:1.5rem; display:flex; flex-direction:column; gap:1.5rem; max-width:800px; width:100%; margin:0 auto; align-self:stretch;">
 
+    <!-- Jinja2 logic: Check if chat history is empty, to show a welcome message -->
     {% if not chat_history %}
-      <!-- Empty state -->
+      <!-- Empty state: Shown when the user starts a new chat -->
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center; padding:3rem; color:#555;">
         <div style="width:64px; height:64px; background:#161616; border:1px solid #1e3a2a; border-radius:16px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.5" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
@@ -160,7 +161,7 @@
 
   </div>
 
-  <!-- ── Input Area ── -->
+  <!-- ── Input Area ── The text box at the bottom where the user types their question -->
   <div style="flex-shrink:0; border-top:1px solid #1e1e1e; background:#0d0d0d; padding:0.75rem 1rem 1rem;">
     <form method="POST" action="{{ url_for('dashboard') }}" id="ask-form" enctype="multipart/form-data" style="max-width:800px; margin:0 auto;">
       <div id="subject-guide-note" style="font-size:0.73rem; color:#777; margin-bottom:8px; display:flex; align-items:center; gap:6px; padding:0.35rem 0.75rem; background:rgba(45,212,191,0.04); border:1px solid rgba(45,212,191,0.1); border-radius:8px; width:fit-content; opacity:0.9; transition:all 0.2s;">

@@ -16,7 +16,7 @@
   <!-- Card -->
   <div class="auth-card" role="main">
 
-    <!-- Tabs -->
+    <!-- Tab Navigation: Let the user switch between Sign In and Create Account pages -->
     <div class="auth-tabs" role="tablist" aria-label="Sign in or create account">
       <a href="{{ url_for('signin') }}" class="auth-tab" id="tab-signin" role="tab" aria-selected="false">Sign In</a>
       <a href="{{ url_for('signup') }}" class="auth-tab active" id="tab-signup" role="tab" aria-selected="true">Create Account</a>
@@ -37,9 +37,11 @@
 
       <div class="auth-divider"><span>or create with email</span></div>
 
-      <!-- Flash/error messages -->
+      <!-- Flash Messages section -->
+      <!-- Jinja2 logic: 'with messages' grabs any error or success messages we sent from app.py -->
       {% with messages = get_flashed_messages() %}
         {% if messages %}
+          <!-- Jinja2 loop: If there are messages, we loop through them and show each one in a red box -->
           {% for message in messages %}
             <div class="flash-msg" style="padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.25rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; text-align: left;">
               {{ message }}
@@ -48,9 +50,10 @@
         {% endif %}
       {% endwith %}
 
-      <!-- Create Account Form -->
+      <!-- Create Account Form: Submits data to the /signup route when the user clicks Create Account -->
       <form class="auth-form" id="signup-form" method="POST" action="{{ url_for('signup') }}">
 
+        <!-- Name Fields: We collect first name and last name here -->
         <div class="auth-name-row">
           <div class="auth-field-group">
             <label class="auth-label" for="signup-first">FIRST NAME</label>

@@ -29,7 +29,7 @@
 
   <form method="POST" action="{{ url_for('settings') }}" id="settings-form">
 
-    <!-- ── Learning Preferences ── -->
+    <!-- ── Learning Preferences ── This section lets the user pick their default subject and AI model -->
     <div class="sett-card">
       <div class="sett-section-header">
         <div class="sett-section-icon">
@@ -67,7 +67,7 @@
         </div>
       </div>
 
-      <!-- Model cards: Groq and Gemini only -->
+      <!-- Model cards: Let the user click a big card to choose Groq or Gemini -->
       <div class="sett-model-cards">
         <div class="sett-model-card {% if settings.get('preferred_model','groq') != 'gemini' %}active{% endif %}" data-model="groq" role="button" tabindex="0" aria-label="Select Groq Llama 3">
           <div class="sett-model-icon">⚡</div>
@@ -86,7 +86,7 @@
       </div>
     </div>
 
-    <!-- ── Appearance ── -->
+    <!-- ── Appearance ── Settings for dark mode and text size -->
     <div class="sett-card">
       <div class="sett-section-header">
         <div class="sett-section-icon">
@@ -143,7 +143,7 @@
       </div>
     </div>
 
-    <!-- ── Notifications ── -->
+    <!-- ── Notifications ── Settings for study reminders and alerts -->
     <div class="sett-card">
       <div class="sett-section-header">
         <div class="sett-section-icon">
@@ -198,7 +198,7 @@
       </div>
     </div>
 
-    <!-- ── Chat Preferences ── -->
+    <!-- ── Chat Preferences ── Settings for auto-saving and timestamps -->
     <div class="sett-card">
       <div class="sett-section-header">
         <div class="sett-section-icon">
@@ -257,7 +257,7 @@
 
   </form>
 
-  <!-- ── Data & Privacy ── -->
+  <!-- ── Data & Privacy ── Buttons to clear history, export data, or delete account -->
   <div class="sett-card">
     <div class="sett-section-header">
       <div class="sett-section-icon">

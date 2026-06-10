@@ -30,12 +30,13 @@
     {% endif %}
   {% endwith %}
 
-  <!-- ── Top Row ── -->
+  <!-- ── Top Row ── This section holds the avatar card and the stats card side-by-side -->
   <div class="prof-top-grid">
 
-    <!-- Avatar card -->
+    <!-- Avatar card: Displays the user's profile picture or initial, their name, and email -->
     <div class="prof-card prof-avatar-card">
       <div class="prof-avatar-wrap">
+        <!-- Jinja2 logic: Check if the user has a Google profile picture -->
         {% if user.picture %}
           <img src="{{ user.picture }}" alt="{{ name }}" class="prof-avatar-img" referrerpolicy="no-referrer" />
         {% else %}
@@ -67,7 +68,7 @@
       </div>
     </div>
 
-    <!-- Stats card -->
+    <!-- Stats card: Displays how many chats they've had, what subjects they asked about, etc. -->
     <div class="prof-card prof-stats-card">
       <div class="prof-section-header">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -97,7 +98,7 @@
         </div>
       </div>
 
-      <!-- Subject breakdown -->
+      <!-- Subject breakdown: Shows a progress bar for each subject based on how often they ask about it -->
       {% if history %}
       <div class="prof-breakdown">
         <div class="prof-breakdown-title">SUBJECT BREAKDOWN</div>
@@ -124,7 +125,7 @@
   <!-- ── Bottom Row ── -->
   <div class="prof-bottom-grid">
 
-    <!-- Account details form -->
+    <!-- Account details form: Lets the user edit their name -->
     <div class="prof-card">
       <div class="prof-section-header">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -180,7 +181,7 @@
       </form>
     </div>
 
-    <!-- Recent activity -->
+    <!-- Recent activity: Shows the 6 most recent questions they asked -->
     <div class="prof-card">
       <div class="prof-section-header">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -216,7 +217,7 @@
 
   </div>
 
-  <!-- Sign Out section -->
+  <!-- Sign Out section: The red sign out button at the bottom -->
   <div class="prof-card prof-signout-section">
     <div style="display:flex; align-items:center; gap:0.75rem;">
       <div style="width:36px; height:36px; background:#2a1515; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">

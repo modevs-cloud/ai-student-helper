@@ -13,7 +13,7 @@
   </div>
   <p class="auth-tagline">Your AI-powered study companion</p>
 
-  <!-- ── STEP 1: Welcome ── (shown by default, hidden on step 2) -->
+  <!-- ── STEP 1: Welcome ── (shown by default, hidden when they click Continue) -->
   <div class="setup-card" id="step-1" role="main" aria-label="Step 1 of 2">
 
     <div class="setup-step-label">STEP 1 OF 2</div>
@@ -28,7 +28,7 @@
       Let's get you set up so you can start learning smarter.
     </p>
 
-    <!-- Feature cards -->
+    <!-- Feature cards: Explains what the app does to get them excited -->
     <div class="setup-features" role="list" aria-label="App features">
       <div class="setup-feature-item" role="listitem">
         <div class="setup-feature-icon" aria-hidden="true">
@@ -72,7 +72,7 @@
 
   </div>
 
-  <!-- ── STEP 2: Profile form ── -->
+  <!-- ── STEP 2: Profile form ── (Starts hidden, shows after they click continue) -->
   <div class="setup-card" id="step-2" style="display:none;" role="main" aria-label="Step 2 of 2">
 
     <div class="setup-step-label">STEP 2 OF 2</div>
@@ -86,6 +86,7 @@
       Tell us a bit about yourself so we can personalize your learning experience.
     </p>
 
+    <!-- Setup Form: Collects name and subject, sends it to app.py /setup -->
     <form method="POST" action="/setup" id="setup-form">
 
       <div class="setup-form-fields">
@@ -105,7 +106,7 @@
           </div>
         </div>
 
-        <!-- Subject preference grid -->
+        <!-- Subject preference grid: Lets the student pick their favorite subject -->
         <div class="auth-field-group">
           <label class="auth-label">PRIMARY SUBJECT PREFERENCE</label>
           <p style="font-size:0.76rem; color:#666; margin: 0 0 0.6rem;">Choose the subject you need the most help with.</p>

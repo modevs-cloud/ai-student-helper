@@ -26,7 +26,7 @@
 </head>
 <body>
 
-  <!-- ── Navbar ──────────────────────────────────────────────── -->
+  <!-- ── Navbar ── This is the menu bar at the top of every page -->
   <header class="navbar" role="banner" style="background:#0d0d0d; border-bottom:1px solid #1e1e1e; padding:0; height:56px; position:sticky; top:0; z-index:1100;">
     <div style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:100%; padding:0 1.5rem;">
 
@@ -38,8 +38,9 @@
         <span class="nav-brand-text" style="font-size:0.95rem; font-weight:700; color:#fff;">AI Student Helper</span>
       </a>
 
+      <!-- Jinja2 logic: If the user is logged in, show the Dashboard, History, Profile links -->
       {% if user %}
-        <!-- ── Authenticated nav ───────────────────────────── -->
+        <!-- ── Authenticated nav ── -->
         <nav class="desktop-nav" role="navigation" aria-label="App navigation">
           <a href="{{ url_for('dashboard') }}" id="nav-dashboard" style="display:flex; align-items:center; gap:6px; padding:0.5rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:500; text-decoration:none; transition:all 0.15s; {% if request.endpoint == 'dashboard' %}background:#1a2a1e; color:#2dd4bf;{% else %}color:#888;{% endif %}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -84,8 +85,9 @@
           </button>
         </div>
 
+      <!-- Jinja2 logic: If the user is NOT logged in, show the About link and Sign In buttons -->
       {% else %}
-        <!-- ── Public nav ──────────────────────────────────── -->
+        <!-- ── Public nav ── -->
         <nav class="desktop-nav public-nav" role="navigation" aria-label="Primary navigation">
           <a href="{{ url_for('about') }}" id="nav-about" style="font-size:0.85rem; color:#888; text-decoration:none;">About</a>
         </nav>
@@ -105,7 +107,7 @@
   </header>
 
 
-  <!-- ── Mobile drawer ───────────────────────────────────────── -->
+  <!-- ── Mobile drawer ── This is the menu that slides out on phone screens -->
   <div id="mobile-menu" class="mobile-menu" role="dialog" aria-modal="true" aria-label="Mobile navigation">
     <nav aria-label="Mobile navigation links">
       <ul style="list-style:none; display:flex; flex-direction:column; align-items:center; gap:1.5rem;">
@@ -128,12 +130,12 @@
     <p style="margin-top:2rem; font-size:0.82rem; color:var(--txt-muted);">🎓 AI Student Helper · Built by Mohammad</p>
   </div>
 
-  <!-- ── Page content ────────────────────────────────────────── -->
+  <!-- ── Page content ── This is where the specific page content (like dashboard or profile) gets injected -->
   <main id="main-content">
     {% block content %}{% endblock %}
   </main>
 
-  <!-- ── Footer ──────────────────────────────────────────────── -->
+  <!-- ── Footer ── The tiny bar at the very bottom of the page -->
   <footer class="footer" role="contentinfo">
     <div class="container">
       <div class="footer-inner">

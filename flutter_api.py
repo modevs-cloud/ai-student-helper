@@ -3,6 +3,17 @@ from flask import Blueprint, request, jsonify
 
 flutter_bp = Blueprint('flutter_bp', __name__)
 
+@flutter_bp.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, DELETE, PUT'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
+
+@flutter_bp.route("/api/<path:path>", methods=["OPTIONS"])
+def handle_options(path):
+    return "", 200
+
 import sys
 
 def get_app_module():
@@ -50,6 +61,60 @@ def api_signup():
     db.session.commit()
 
     return jsonify({"token": session_token, "user": {"name": f"{first_name} {last_name}".strip(), "email": email}})
+
+@flutter_bp.route("/api/google-signin", methods=["POST"])
+def api_google_signin():
+    data = request.get_json() or {}
+    id_token = data.get("id_token")
+    if not id_token:
+        return jsonify({"error": "Missing id_token"}), 400
+        
+    try:
+        import requests as req
+        resp = req.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}")
+        if not resp.ok:
+            return jsonify({"error": "Invalid token from Google"}), 401
+            
+        info = resp.json()
+        google_id = info.get("sub")
+        email = info.get("email")
+        name = info.get("name")
+        
+        if not google_id or not email:
+            return jsonify({"error": "Incomplete token info"}), 401
+            
+        User = get_app_module().User
+        db = get_app_module().db
+        
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.google_id = google_id
+            if not user.session_token:
+                import uuid
+                user.session_token = uuid.uuid4().hex
+            db.session.commit()
+        else:
+            first_name = info.get("given_name", "")
+            last_name = info.get("family_name", "")
+            if not first_name and name:
+                first_name = name.split()[0]
+            import uuid
+            user = User(
+                google_id=google_id,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                default_subject="Math",
+                settings={"default_subject": "Math"},
+                session_token=uuid.uuid4().hex
+            )
+            db.session.add(user)
+            db.session.commit()
+            
+        return jsonify({"token": user.session_token, "user": {"email": email, "name": name}})
+    except Exception as e:
+        print(f"ERROR /api/google-signin: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @flutter_bp.route("/api/signin", methods=["POST"])
 @flutter_bp.route("/api/login", methods=["POST"])
@@ -179,6 +244,12 @@ def api_settings():
     if "default_subject" in data:
         settings["default_subject"] = data["default_subject"]
         user.default_subject = data["default_subject"]
+        
+    if "first_name" in data and data["first_name"]:
+        user.first_name = data["first_name"]
+        
+    if "last_name" in data and data["last_name"]:
+        user.last_name = data["last_name"]
     
     user.settings = settings
     db.session.commit()

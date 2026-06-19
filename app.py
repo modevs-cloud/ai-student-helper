@@ -1051,8 +1051,5 @@ def handle_exception(e):
 
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
-from flutter_api import flutter_bp
-app.register_blueprint(flutter_bp)
-
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

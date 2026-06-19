@@ -15,6 +15,15 @@ env/
 flask_session/
 users.json
 
+# ─── User uploads (runtime files, not source code) ───────────────
+static/uploads/
+
+# ─── Mobile app (not part of web deployment) ─────────────────────
+Flutterr/
+flutter_api.py
+migrate_db.py
+populate_chat_ids.py
+
 
 # ─── macOS ────────────────────────────────────────────────────
 .DS_Store
@@ -25,3 +34,6 @@ users.json
 .idea/
 *.swp
 Ai Student helper ios app/
+study.md
+technical_interview_qa.md
+annotated_code.md

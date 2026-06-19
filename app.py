@@ -8,31 +8,44 @@ from functools import wraps
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
+# Load all the hidden secret keys from the .env file so we can use them securely
 load_dotenv()
 
 # ─── App setup ────────────────────────────────────────────────────────────────
+# Create the main Flask web server application. "__name__" tells Flask where to look for templates and static files.
 app = Flask(__name__)
+# This fixes a bug when deploying to cloud servers (like Render) so the app knows it's using secure HTTPS.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+# Set a secure, random key used to encrypt the user's session cookie so hackers can't forge logins.
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
+# Allow Google OAuth to run without HTTPS locally during testing
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-
+# Grab the database connection URL from the hidden .env file
 db_url = os.getenv("DATABASE_URL")
+# SQLAlchemy requires the URL to start with "postgresql://" not "postgres://", so we fix it if needed.
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
+# Tell our Flask app exactly where the PostgreSQL database lives.
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+# Turn off a feature that tracks every single database change to save memory and make the app run faster.
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# Database engine options to prevent connections from timing out when deployed
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 280,
     "pool_pre_ping": True,
 }
+# Connect our Flask app to the SQLAlchemy database manager
 db = SQLAlchemy(app)
 
+# This block runs when the app starts. It ensures the database tables are created.
 with app.app_context():
+    # Create the tables based on our User and Message classes
     db.create_all()
     # Migration helper to add session_token column to user table if not present
     try:
@@ -498,8 +511,8 @@ def signin():
                 flash("No account found with this email.")
                 return render_template("signin.html")
                 
-            # Step 4: Check if the password matches
-            if user_record.password != password:
+            # Step 4: Check if the password matches (using secure hash comparison)
+            if not user_record.password or not check_password_hash(user_record.password, password):
                 flash("Incorrect password. Please try again.")
                 return render_template("signin.html")
                 
@@ -564,12 +577,12 @@ def signup():
                     flash("An account with this email already exists.")
                     return render_template("signup.html")
                     
-                # Step 4: Create their new account in the database
+                # Step 4: Create their new account in the database (password is hashed for security)
                 mock_id = str(uuid.uuid4())
                 new_user = User(
                     google_id=None,
                     email=email,
-                    password=password,
+                    password=generate_password_hash(password),
                     first_name=first_name,
                     last_name=last_name,
                     default_subject="Math",
@@ -670,70 +683,92 @@ def dashboard():
 
     is_new_answer = False
 
-    # Step 5: If the user just asked a question (POST request)
+    # If the user just submitted a question via the chat box (which sends a POST request)
     if request.method == "POST":
+        # Get the question they typed and remove any extra spaces from the ends
         question = request.form.get("question", "").strip()
+        # Get the subject they chose from the dropdown (default to Math)
         subject  = request.form.get("subject", "Math")
+        # Get the AI model they chose from the dropdown (default to groq)
         model    = request.form.get("model", "groq")
         
-        # Keep active selections synchronized in Flask-Session
+        # Save the chosen subject into their secure session so it stays selected next time
         session["active_subject"] = subject
+        # Save the chosen AI model into their secure session
         session["active_model"] = model
 
+        # If the user clicked send but the question box was empty
         if not question:
+            # Create an error message to show them on the screen
             error = "Please type a question before clicking Get Help."
         else:
 
-
             try:
+                # Import the threading library to run the AI request in the background
                 import threading as _threading
 
-                # Step 6: Get past messages so the AI remembers the conversation
+                # Grab the recent conversation history so the AI remembers what was just said
                 current_chat = get_session_active_chat()
 
-                # Step 7: Ask the AI for the answer! (We run it in a thread so it doesn't freeze the app)
+                # Create a dictionary to hold the AI's answer once it finishes thinking
                 _result = {"answer": None}
+                # Define a tiny function that will actually talk to the Groq or Gemini API
                 def _run():
+                    # Call our custom 'ask_ai' function and put the response into our dictionary
                     _result["answer"] = ask_ai(
                         question, subject, model,
                         chat_history=current_chat
                     )
+                # Create a background thread to run the AI function so the web server doesn't freeze
                 _t = _threading.Thread(target=_run, daemon=True)
+                # Start the background thread
                 _t.start()
+                # Wait up to 60 seconds for the AI to finish answering
                 _t.join(timeout=60)
 
-                # Step 8: Check if it failed or took too long
+                # If the thread is still running after 60s, or the AI gave us an empty answer
                 if _t.is_alive() or not _result["answer"]:
+                    # Create a friendly error message for the user instead of breaking the app
                     answer = (
                         "⚠️ The AI is temporarily unavailable or took too long to respond. "
                         "Please try again in a moment."
                     )
                 else:
+                    # Otherwise, grab the successful answer from our dictionary
                     answer = _result["answer"]
 
-                # Step 9: Make sure this chat session has a unique ID
+                # If this is a brand new conversation, generate a unique ID string for it
                 if "active_chat_id" not in session:
                     session["active_chat_id"] = str(uuid.uuid4())
 
-                # Step 10: Save the question and answer to the database history
+                # Get the logged-in user's database record
                 u = get_user_record()
+                # If the user was found in the database
                 if u:
+                    # Create a new Message object to save the chat to the PostgreSQL database
                     msg = Message(
-                        user_id=u.id,
-                        chat_id=session["active_chat_id"],
-                        subject=subject,
-                        question=question,
-                        answer=answer,
-                        model_used=model,
-                        is_active=True
+                        user_id=u.id, # Link it to this specific user
+                        chat_id=session["active_chat_id"], # Link it to this specific conversation
+                        subject=subject, # Save the subject
+                        question=question, # Save what the student asked
+                        answer=answer, # Save what the AI answered
+                        model_used=model, # Save whether Groq or Gemini was used
+                        is_active=True # Mark the message as visible
                     )
+                    # Add the new message to the database queue
                     db.session.add(msg)
+                    # Permanently save the queue into the database
                     db.session.commit()
+                # Tell Flask that the session data changed and needs to be saved
                 session.modified = True
+                # Helper function to save any profile updates
                 _persist_user()
+                # Flag to tell the frontend that we have a new answer to display
                 is_new_answer = True
 
+            # If literally anything else crashes in the Python code above
             except Exception as _exc:
+                # Print the exact error to the server logs so the developer can debug it
                 print(f"ERROR dashboard ask_ai: {_exc}")
                 import traceback
                 traceback.print_exc()

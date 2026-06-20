@@ -10,7 +10,7 @@ Students can sign in with Google, ask questions across subjects, and receive cle
 
 ---
 
-## ✨ Features
+##  Features
 
 - **No Passwords Needed:** Seamless Google OAuth 2.0 integration for quick access.
 - **Interactive Dashboard:** A chat-style interface where students ask questions on the left and receive AI answers on the right.
@@ -25,7 +25,7 @@ Students can sign in with Google, ask questions across subjects, and receive cle
 - **Bulletproof Error Handling:** Global error handlers, per-route try/except guards, and database fallbacks ensure no user ever sees a raw Internal Server Error — every failure shows a clean, friendly message with automatic recovery.
 - **Responsive Design:** Fully mobile-friendly UI that works seamlessly across all devices.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 **Frontend:**
 - HTML5, CSS3, Vanilla JavaScript
@@ -83,7 +83,7 @@ The application uses a PostgreSQL database hosted on Neon Cloud, containing two 
 
 ---
 
-## 🚀 Running Locally
+##  Running Locally
 
 Follow these steps to run the application on your local machine.
 
@@ -124,7 +124,7 @@ Follow these steps to run the application on your local machine.
 
 ---
 
-## ☁️ Deploying to Render
+##  Deploying to Render
 
 1. Connect your GitHub repository to Render as a **Web Service**.
 2. Set the build command to `pip install -r requirements.txt`.
@@ -134,7 +134,7 @@ Follow these steps to run the application on your local machine.
 
 ---
 
-## 👨‍💻 Built By
+## Built By
 
 **Mohammad Hussainkhail**
 - *Associate of Science in Computer Science — Community College of Aurora (2026)*

@@ -22,8 +22,9 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Set a secure, random key used to encrypt the user's session cookie so hackers can't forge logins.
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
-# Allow Google OAuth to run without HTTPS locally during testing
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+# Allow Google OAuth to run without HTTPS locally during testing (never in production)
+if os.getenv("FLASK_ENV") != "production":
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 # Grab the database connection URL from the hidden .env file
 db_url = os.getenv("DATABASE_URL")
@@ -47,17 +48,6 @@ db = SQLAlchemy(app)
 with app.app_context():
     # Create the tables based on our User and Message classes
     db.create_all()
-    # Migration helper to add session_token column to user table if not present
-    try:
-        from sqlalchemy import inspect, text
-        inspector = inspect(db.engine)
-        columns = [c["name"] for c in inspector.get_columns("user")]
-        if "session_token" not in columns:
-            db.session.execute(text("ALTER TABLE \"user\" ADD COLUMN session_token VARCHAR(255) UNIQUE;"))
-            db.session.commit()
-            print("Startup Migration: Added session_token column to user table.")
-    except Exception as e:
-        print(f"Startup Migration info/error: {e}")
 
 class User(db.Model):
     """
@@ -72,7 +62,6 @@ class User(db.Model):
     last_name = db.Column(db.String(255))
     default_subject = db.Column(db.String(100), default="Math")
     settings = db.Column(db.JSON, nullable=True)
-    session_token = db.Column(db.String(255), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     messages = db.relationship('Message', backref='user', lazy=True)
 
@@ -667,12 +656,6 @@ def dashboard():
     # Step 4: Gather all the data we need to show the Dashboard
     user     = get_current_user()
     u = get_user_record()
-    
-    # Make sure they have a session token for the mobile app to use
-    if u and not u.session_token:
-        u.session_token = uuid.uuid4().hex
-        db.session.commit()
-    session_token = u.session_token if u else None
     name     = session.get("display_name", user["name"].split()[0])
     settings = session.get("settings", {"default_subject": "Math"})
     answer   = None
@@ -687,6 +670,8 @@ def dashboard():
     if request.method == "POST":
         # Get the question they typed and remove any extra spaces from the ends
         question = request.form.get("question", "").strip()
+        if len(question) > 2000:
+            error = "Your question is too long. Please keep it under 2000 characters."
         # Get the subject they chose from the dropdown (default to Math)
         subject  = request.form.get("subject", "Math")
         # Get the AI model they chose from the dropdown (default to groq)
@@ -714,11 +699,11 @@ def dashboard():
                 _result = {"answer": None}
                 # Define a tiny function that will actually talk to the Groq or Gemini API
                 def _run():
-                    # Call our custom 'ask_ai' function and put the response into our dictionary
-                    _result["answer"] = ask_ai(
-                        question, subject, model,
-                        chat_history=current_chat
-                    )
+                    with app.app_context():
+                        _result["answer"] = ask_ai(
+                            question, subject, model,
+                            chat_history=current_chat
+                        )
                 # Create a background thread to run the AI function so the web server doesn't freeze
                 _t = _threading.Thread(target=_run, daemon=True)
                 # Start the background thread
@@ -806,7 +791,6 @@ def dashboard():
         gemini_enabled=bool(os.getenv("GEMINI_API_KEY", "").strip()),
         chat_history=get_session_active_chat(),
         is_new_answer=is_new_answer,
-        session_token=session_token,
     )
 
 

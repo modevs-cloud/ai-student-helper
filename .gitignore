@@ -37,3 +37,9 @@ Ai Student helper ios app/
 study.md
 technical_interview_qa.md
 annotated_code.md
+
+# ─── Local-only files (never push) ───────────────────────────
+.mcp.json
+siemmien-interviewQuestion.md
+portfolio project
+test_apis.py

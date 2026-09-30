@@ -37,4 +37,14 @@ Ai Student helper ios app/
 study.md
 technical_interview_qa.md
 annotated_code.md
+interview_prep.md
+siemmien-interviewQuestion.md
+
+# ─── Portfolio site (separate project, not part of this app) ─────────────────
+portfolio project/
+portfolio_template.zip
+
+# ─── Local tool configs ───────────────────────────────────────────────────────
+.mcp.json
+test_apis.py
 

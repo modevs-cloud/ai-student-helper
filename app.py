@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import requests as req
 from flask import Flask, render_template, session, redirect, url_for, flash, request, jsonify, g
@@ -1086,6 +1087,12 @@ def after_login():
         google_id = str(info.get("id"))
         email_clean = (info.get("email") or "").lower().strip()
 
+        is_valid_email, email_err, email_clean = validate_signup_email(email_clean)
+        if not is_valid_email:
+            session.clear()
+            flash(email_err)
+            return redirect(url_for("signup"))
+
         # Step 3: Save their basic Google info into their session (browser cookie)
         session["user"] = {
             "email":   email_clean,
@@ -1098,7 +1105,7 @@ def after_login():
         try:
             saved = User.query.filter_by(google_id=google_id).first()
             if not saved and email_clean:
-                saved = User.query.filter_by(email=email_clean).first()
+                saved = find_user_by_email(email_clean)
                 if saved:
                     saved.google_id = google_id
                     db.session.commit()
@@ -1109,6 +1116,7 @@ def after_login():
         # Step 5: Send them to Dashboard if they exist, otherwise to Setup screen
         if saved:
             session.pop("needs_setup", None)
+            session["user"]["email"] = saved.email
             session["display_name"] = f"{saved.first_name or ''} {saved.last_name or ''}".strip() or info.get("name") or "Student"
             clean_settings = _sanitize_session_settings(saved.settings, saved.default_subject or "Math")
             session["settings"] = clean_settings
@@ -1193,6 +1201,198 @@ def setup():
         return render_template("setup.html")
 
 
+# ── Email Validation & Anti-Temp-Mail Protection ──────────────────────────────
+
+ALLOWED_EMAIL_DOMAINS = {
+    "gmail.com",
+    "outlook.com",
+    "hotmail.com",
+    "live.com",
+    "msn.com",
+    "icloud.com",
+    "me.com",
+    "mac.com",
+    "yahoo.com",
+    "proton.me",
+    "protonmail.com",
+    "aol.com",
+    "zoho.com",
+}
+
+BLOCKED_TEMP_EMAIL_DOMAINS = {
+    "googlemail.com",
+    "gmailnator.com",
+    "smailpro.com",
+    "tempmail.com",
+    "temp-mail.org",
+    "temp-mail.io",
+    "10minutemail.com",
+    "guerrillamail.com",
+    "sharklasers.com",
+    "mailinator.com",
+    "yopmail.com",
+    "trashmail.com",
+    "getnada.com",
+    "maildrop.cc",
+    "dispostable.com",
+    "mohmal.com",
+    "fakeinbox.com",
+    "throwawaymail.com",
+    "emailondeck.com",
+    "burnermail.io",
+    "tempmailo.com",
+    "internxt.com",
+    "duck.com",
+    "mozmail.com",
+    " SimpleLogin.co".strip().lower(),
+    "anonaddy.me",
+}
+
+BLOCKED_LOCAL_KEYWORDS = (
+    "tempmail",
+    "temp-mail",
+    "gmailnator",
+    "smailpro",
+    "throwaway",
+    "disposable",
+    "burnermail",
+    "trashmail",
+    "10minutemail",
+    "guerrillamail",
+    "mailinator",
+    "yopmail",
+    "fakeemail",
+)
+
+
+def canonicalize_email(raw_email: str) -> str:
+    """
+    Return a canonical lowercase email for duplicate-account detection.
+    For @gmail.com, dots in the local part are ignored by Google, so stripping
+    dots ensures john.doe@gmail.com and johndoe@gmail.com map to the same user.
+    """
+    cleaned = (raw_email or "").strip().lower()
+    if "@" not in cleaned:
+        return cleaned
+    local, domain = cleaned.rsplit("@", 1)
+    local = local.split("+", 1)[0]
+    if domain in ("gmail.com", "googlemail.com"):
+        local = local.replace(".", "")
+        domain = "gmail.com"
+    return f"{local}@{domain}"
+
+
+def validate_signup_email(raw_email: str) -> tuple[bool, str, str]:
+    """
+    Validate that the email is a real, permanent email address (e.g. gmail.com,
+    outlook.com) and block temporary/disposable emails including temporary
+    Google/Gmail generator addresses (dot-trick permutations, + aliases,
+    googlemail.com, and known burner patterns).
+    Returns (is_valid, error_message, cleaned_email).
+    """
+    email = (raw_email or "").strip().lower()
+    if not email or "@" not in email:
+        return False, "Please enter a valid email address.", email
+
+    parts = email.split("@")
+    if len(parts) != 2:
+        return False, "Please enter a valid email address.", email
+
+    local, domain = parts[0].strip(), parts[1].strip()
+    if not local or not domain or "." not in domain:
+        return False, "Please enter a valid email address.", email
+
+    # 1. Block '+' subaddressing used for temporary/disposable aliases
+    if "+" in local:
+        return (
+            False,
+            "Temporary or alias email addresses (containing '+') are not allowed. Please use your main email address.",
+            email,
+        )
+
+    # 2. Block googlemail.com and known temporary email domains explicitly
+    if domain == "googlemail.com":
+        return (
+            False,
+            "Temporary Google mail aliases (@googlemail.com) are not allowed. Please use a standard @gmail.com or @outlook.com address.",
+            email,
+        )
+
+    if domain in BLOCKED_TEMP_EMAIL_DOMAINS or any(
+        k in domain for k in ("tempmail", "temp-mail", "gmailnator", "smailpro", "mailinator", "yopmail", "guerrilla", "10minute", "trashmail", "throwaway", "disposable")
+    ):
+        return (
+            False,
+            "Temporary or disposable email addresses are not allowed. Please use a permanent email such as Gmail or Outlook.",
+            email,
+        )
+
+    # 3. Require an approved provider domain (gmail.com, outlook.com, etc. or .edu/.ac academic domain)
+    is_academic = domain.endswith(".edu") or ".ac." in domain or domain.endswith(".edu.sa") or domain.endswith(".edu.uk")
+    if domain not in ALLOWED_EMAIL_DOMAINS and not is_academic:
+        return (
+            False,
+            "Please sign up with a permanent email provider such as Gmail (@gmail.com), Outlook (@outlook.com / @hotmail.com), iCloud, Yahoo, or a school (.edu) email.",
+            email,
+        )
+
+    # 4. Block temporary Google/Gmail generator tricks (Gmailnator / Smailpro dot-matrix & burner patterns)
+    if local.startswith(".") or local.endswith(".") or ".." in local:
+        return False, "Please enter a valid email address.", email
+
+    local_no_dots = local.replace(".", "")
+    if len(local_no_dots) < 3 or not re.match(r"^[a-z0-9._-]+$", local):
+        return False, "Please enter a valid email address.", email
+
+    if any(kw in local_no_dots for kw in BLOCKED_LOCAL_KEYWORDS):
+        return (
+            False,
+            "Temporary or disposable email addresses are not allowed. Please use your personal Gmail or Outlook account.",
+            email,
+        )
+
+    if domain == "gmail.com":
+        # Temp-Gmail generators (like Gmailnator/Smailpro) inject 3+ dots across the username
+        # to create thousands of disposable addresses from one burner Gmail account.
+        if local.count(".") > 2:
+            return (
+                False,
+                "Temporary Google email addresses (excessive dot variations) are not allowed. Please use a standard @gmail.com or @outlook.com address.",
+                email,
+            )
+        # Also block alternating single-character dot patterns like a.b.c@gmail.com
+        segments = local.split(".")
+        if len(segments) >= 3 and sum(1 for s in segments if len(s) == 1) >= 2:
+            return (
+                False,
+                "Temporary Google email addresses are not allowed. Please use your real @gmail.com or @outlook.com address.",
+                email,
+            )
+
+    return True, "", email
+
+
+def find_user_by_email(raw_email: str):
+    """
+    Look up an existing User by exact email match OR canonical Gmail address
+    so a user cannot register the same Gmail account multiple times using dots.
+    """
+    email = (raw_email or "").strip().lower()
+    if not email:
+        return None
+    user_record = User.query.filter_by(email=email).first()
+    if user_record:
+        return user_record
+
+    target_canonical = canonicalize_email(email)
+    if target_canonical.endswith("@gmail.com"):
+        gmail_users = User.query.filter(User.email.ilike("%@gmail.com")).all()
+        for existing in gmail_users:
+            if canonicalize_email(existing.email) == target_canonical:
+                return existing
+    return None
+
+
 @app.route("/signin", methods=["GET", "POST"])
 def signin():
     """
@@ -1203,7 +1403,7 @@ def signin():
         u_sess = get_current_user()
         if u_sess and not session.get("needs_setup"):
             try:
-                if User.query.filter_by(email=u_sess.get("email")).first():
+                if find_user_by_email(u_sess.get("email")):
                     return redirect(url_for("dashboard"))
                 else:
                     session.clear()
@@ -1217,29 +1417,33 @@ def signin():
             
             if not email or not password:
                 flash("Please enter both email and password.")
-                return render_template("signin.html")
+                return render_template("signin.html", prefill_email=email)
 
-            # Step 3: Look them up in the database
+            # Step 3: Look them up in the database (supports canonical Gmail lookup)
             try:
-                user_record = User.query.filter_by(email=email).first()
+                user_record = find_user_by_email(email)
             except Exception as db_err:
                 print(f"ERROR /signin DB: {db_err}")
                 flash("Database temporarily unavailable. Please try again.")
-                return render_template("signin.html")
+                return render_template("signin.html", prefill_email=email)
                 
             if not user_record:
-                flash("No account found with this email.")
-                return render_template("signin.html")
+                flash("No account found with this email. Please create an account first.")
+                return render_template("signin.html", prefill_email=email)
                 
+            if not user_record.password:
+                flash("This email is linked to Google Sign-In. Please click 'Continue with Google' above.")
+                return render_template("signin.html", prefill_email=email)
+
             # Step 4: Check if the password matches (using secure hash comparison)
-            if not user_record.password or not check_password_hash(user_record.password, password):
+            if not check_password_hash(user_record.password, password):
                 flash("Incorrect password. Please try again.")
-                return render_template("signin.html")
+                return render_template("signin.html", prefill_email=email)
                 
-            # Step 5: Success! Save their info in the session cookie and log them in
+            # Step 5: Success! Save their info in the session cookie and send straight to Dashboard
             session.pop("needs_setup", None)
             session["user"] = {
-                "email": email,
+                "email": user_record.email,
                 "name": f"{user_record.first_name or ''} {user_record.last_name or ''}".strip() or "Student",
                 "picture": None,
                 "id": user_record.google_id or str(uuid.uuid4())
@@ -1252,8 +1456,9 @@ def signin():
             
             return redirect(url_for("dashboard"))
             
-        # If it's a GET request, just show the Sign In page
-        return render_template("signin.html")
+        # If it's a GET request, just show the Sign In page (pre-filling email if redirected from signup)
+        prefill_email = request.args.get("email", "").strip()
+        return render_template("signin.html", prefill_email=prefill_email)
     except Exception as e:
         print(f"ERROR /signin: {e}")
         flash("Something went wrong. Please try again.")
@@ -1270,7 +1475,7 @@ def signup():
         u_sess = get_current_user()
         if u_sess and not session.get("needs_setup"):
             try:
-                if User.query.filter_by(email=u_sess.get("email")).first():
+                if find_user_by_email(u_sess.get("email")):
                     return redirect(url_for("dashboard"))
                 else:
                     session.clear()
@@ -1289,19 +1494,28 @@ def signup():
                 flash("Please fill in all required fields.")
                 return render_template("signup.html")
                 
+            # Step 2b: Validate email and block temporary / disposable Google or third-party emails
+            is_valid_email, email_err, email = validate_signup_email(email)
+            if not is_valid_email:
+                flash(email_err)
+                return render_template("signup.html")
+
+            if len(password) < 6:
+                flash("Password must be at least 6 characters long.")
+                return render_template("signup.html")
+
             if password != confirm:
                 flash("Passwords do not match. Please try again.")
                 return render_template("signup.html")
 
-            # Step 3: Check if this email is already registered
+            # Step 3: Check if this email is already registered (including Gmail dot variations)
             try:
-                user_record = User.query.filter_by(email=email).first()
+                user_record = find_user_by_email(email)
                 if user_record:
-                    flash("An account with this email already exists.")
-                    return render_template("signup.html")
+                    flash("An account with this email already exists. Please sign in to continue to your dashboard.")
+                    return redirect(url_for("signin", email=user_record.email))
                     
                 # Step 4: Create their new account in the database (password is hashed for security)
-                mock_id = str(uuid.uuid4())
                 new_user = User(
                     google_id=None,
                     email=email,
@@ -1319,18 +1533,9 @@ def signup():
                 flash("Could not create your account. Please try again.")
                 return render_template("signup.html")
             
-            # Step 5: Log them in and send to the 2-step onboarding Setup screen
-            session["user"] = {
-                "email": email,
-                "name": f"{first_name} {last_name}".strip(),
-                "picture": None,
-                "id": mock_id
-            }
-            session["display_name"] = session["user"]["name"]
-            session["settings"] = {"default_subject": "Math"}
-            session["needs_setup"] = True
-            
-            return redirect(url_for("setup"))
+            # Step 5: Redirect to Sign In with their email pre-filled so they log in and go straight to Dashboard
+            flash("Account created successfully! Please sign in to continue to your dashboard.")
+            return redirect(url_for("signin", email=email))
             
         # If GET request, show the empty signup form
         return render_template("signup.html")

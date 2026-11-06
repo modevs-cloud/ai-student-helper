@@ -55,7 +55,7 @@
           <label class="auth-label" for="signin-email">Email Address</label>
           <div class="auth-input-wrap">
             <svg class="auth-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-            <input type="email" id="signin-email" name="email" placeholder="you@example.com" class="auth-input" autocomplete="email">
+            <input type="email" id="signin-email" name="email" value="{{ prefill_email or request.args.get('email', '') }}" placeholder="you@gmail.com" class="auth-input" autocomplete="email" required>
           </div>
         </div>
 

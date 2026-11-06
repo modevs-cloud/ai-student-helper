@@ -1,0 +1,349 @@
+{% extends "app_base.html" %}
+{% block title %}Privacy Policy &amp; Terms — AI Student Helper{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar-title">Privacy Policy &amp; Terms</span>
+{% endblock %}
+
+{% block topbar_right %}
+  {% if user %}
+    <a href="{{ url_for('dashboard') }}" class="btn">← Back to Chat</a>
+  {% elif session.get('user') %}
+    <a href="{{ url_for('setup') }}" class="btn">← Back to Setup</a>
+  {% else %}
+    <a href="{{ url_for('signin') }}" class="btn">Sign In</a>
+    <a href="{{ url_for('landing') }}" class="btn btn-accent">← Home</a>
+  {% endif %}
+{% endblock %}
+
+{% block page %}
+<div class="set-page">
+  <div class="set-inner">
+
+    <div class="set-title-row">
+      <h1 class="set-title">Privacy Policy &amp; Terms</h1>
+      <span class="priv-ver-pill">
+        <span class="priv-ver-dot"></span>
+        Last updated: November 2026
+      </span>
+    </div>
+
+    <div class="set-layout">
+
+      <!-- ── Left vertical tab menu (matches Settings / About) ── -->
+      <nav class="set-tabs" role="tablist" aria-label="Privacy and Terms sections">
+        <button type="button" class="set-tab" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Data We Collect</button>
+        <button type="button" class="set-tab" role="tab" id="tab-security" data-tab="security" aria-selected="false">API Keys &amp; Security</button>
+        <button type="button" class="set-tab" role="tab" id="tab-oauth"    data-tab="oauth"    aria-selected="false">Google Sign-In &amp; Cookies</button>
+        <button type="button" class="set-tab" role="tab" id="tab-rights"   data-tab="rights"   aria-selected="false">Your Data Rights</button>
+        <button type="button" class="set-tab" role="tab" id="tab-terms"    data-tab="terms"    aria-selected="false">Terms of Use</button>
+      </nav>
+
+      <!-- ── Right content card ── -->
+      <div class="set-panel">
+
+        <!-- ── 1. Overview & Data We Collect ── -->
+        <section class="set-section" data-tab="overview" role="tabpanel" aria-labelledby="tab-overview">
+          <div class="priv-hero">
+            <div class="priv-logo" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="priv-heading">Student-First Privacy Commitment</h2>
+              <p class="priv-tagline">We collect only the minimum data required to save your study history and preferences — never selling or sharing your personal data with advertisers.</p>
+            </div>
+          </div>
+
+          <div class="priv-prose">
+            <p>
+              <strong>AI Student Helper</strong> (built and maintained by Mohammad) is an educational study companion designed to help students learn across Mathematics, Science, Computer Science, History, and English. This Privacy Policy explains what information is collected, how it is stored in our PostgreSQL database, and how you stay in full control of your data.
+            </p>
+          </div>
+
+          <div class="priv-grid">
+            <div class="priv-card">
+              <div class="priv-card-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <h3 class="priv-card-title">Account Information</h3>
+              <p class="priv-card-desc">
+                When you sign up via Email or Google OAuth, we store your email address, first and last name, and hashed password (for email accounts) in our PostgreSQL <code>User</code> table.
+              </p>
+            </div>
+
+            <div class="priv-card">
+              <div class="priv-card-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <h3 class="priv-card-title">Study &amp; Chat History</h3>
+              <p class="priv-card-desc">
+                When "Auto-save conversations" is enabled in Settings, your questions, AI responses, subject tags, and timestamps are stored in the PostgreSQL <code>Message</code> table so you can revisit past study sessions.
+              </p>
+            </div>
+
+            <div class="priv-card">
+              <div class="priv-card-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+              </div>
+              <h3 class="priv-card-title">Learning Preferences</h3>
+              <p class="priv-card-desc">
+                Your preferred default subject, grade level, explanation style, theme (dark/light), and text size are saved to your account profile so your workspace stays personalized across devices.
+              </p>
+            </div>
+
+            <div class="priv-card">
+              <div class="priv-card-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              </div>
+              <h3 class="priv-card-title">What We Never Do</h3>
+              <p class="priv-card-desc">
+                We never sell student data, display third-party behavioral ads, or share your personal account records with data brokers.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 2. API Keys & Security ── -->
+        <section class="set-section" data-tab="security" role="tabpanel" aria-labelledby="tab-security" hidden>
+          <h2 class="set-h">Bring Your Own API Key (BYOK) &amp; Security</h2>
+          <p class="set-sub">How your personal AI provider keys and account credentials are protected at rest and in transit.</p>
+
+          <div class="priv-list">
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Encrypted at Rest (PBKDF2-SHA256 + HMAC-SHA256)</div>
+                <div class="priv-row-sub">
+                  If you connect your own Anthropic Claude, Google Gemini, OpenAI, or Groq API key in Settings, your key is encrypted using a per-user key derived via <code>PBKDF2-HMAC-SHA256</code> with an <code>HMAC-SHA256</code> authentication tag before being stored in our server-side PostgreSQL database.
+                </div>
+              </div>
+              <span class="priv-tag">Server-Side Vault</span>
+            </div>
+
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Never Exposed in Browser Cookies or DOM</div>
+                <div class="priv-row-sub">
+                  Your plaintext or encrypted API key is never stored in client-side browser cookies, <code>localStorage</code>, or rendered HTML. Only a masked preview (for example, <code>AIza••••••••••••7f9a</code>) is shown in the Settings UI, and the input field is scrubbed from browser memory immediately after verification.
+                </div>
+              </div>
+              <span class="priv-tag">Zero Console Leak</span>
+            </div>
+
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Header-Only Provider Requests</div>
+                <div class="priv-row-sub">
+                  When generating answers or verifying your key with Google Gemini, Anthropic Claude, OpenAI, or Groq, your API key is transmitted strictly over HTTPS request headers — never in query-string URLs or server error logs.
+                </div>
+              </div>
+              <span class="priv-tag">HTTPS Headers</span>
+            </div>
+
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Password Hashing</div>
+                <div class="priv-row-sub">
+                  For email and password accounts, passwords are never stored in plaintext. All passwords are salted and hashed using Werkzeug's cryptographic password hashing before database storage.
+                </div>
+              </div>
+              <span class="priv-tag">Salted Hash</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 3. Google Sign-In & Cookies ── -->
+        <section class="set-section" data-tab="oauth" role="tabpanel" aria-labelledby="tab-oauth" hidden>
+          <h2 class="set-h">Google OAuth 2.0 &amp; Session Cookies</h2>
+          <p class="set-sub">How Google Sign-In and essential session cookies work in AI Student Helper.</p>
+
+          <div class="priv-prose">
+            <p>
+              <strong>Google OAuth 2.0 Sign-In:</strong> When you choose "Continue with Google", we request only the basic OpenID scopes (<code>openid</code>, <code>userinfo.email</code>, and <code>userinfo.profile</code>). We receive your verified email address, display name, and profile avatar URL to create or sign into your AI Student Helper account. We do not request access to your Google Drive, Gmail, Contacts, or Calendar.
+            </p>
+            <p>
+              <strong>Essential Session Cookies:</strong> AI Student Helper uses a cryptographically signed Flask session cookie to keep you signed in and remember your active subject and theme preferences while navigating the app. We do not use third-party advertising or cross-site tracking cookies.
+            </p>
+            <p>
+              <strong>Third-Party AI Processing:</strong> When you submit a study question, the question text and recent conversation context (up to the last 10 turns in that chat) are sent to the selected AI provider (Groq, Google Gemini, Anthropic, or OpenAI) solely to generate your tutoring response.
+            </p>
+          </div>
+        </section>
+
+        <!-- ── 4. Your Rights & Data Deletion ── -->
+        <section class="set-section" data-tab="rights" role="tabpanel" aria-labelledby="tab-rights" hidden>
+          <h2 class="set-h">Your Data Rights, Export &amp; Deletion</h2>
+          <p class="set-sub">You have full ownership and one-click control over your chat history, API keys, and account data at any time.</p>
+
+          <div class="priv-list">
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Download Your Data (JSON Export)</div>
+                <div class="priv-row-sub">
+                  In <strong>Settings → Data &amp; Privacy</strong>, you can download a complete machine-readable JSON archive of your profile, learning preferences, and chronological chat history with ISO-8601 timestamps.
+                </div>
+              </div>
+              {% if user %}
+              <a href="{{ url_for('export_data') }}" class="btn">Export JSON</a>
+              {% else %}
+              <span class="priv-tag">Settings → Data</span>
+              {% endif %}
+            </div>
+
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Delete Individual or All Chat History</div>
+                <div class="priv-row-sub">
+                  You can delete individual conversations on the <strong>History</strong> page or permanently wipe all saved chat messages from our PostgreSQL database via <strong>Settings → Data &amp; Privacy → Clear all history</strong>.
+                </div>
+              </div>
+              <span class="priv-tag">Instant Removal</span>
+            </div>
+
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Opt Out of Conversation Saving</div>
+                <div class="priv-row-sub">
+                  Toggle off <strong>Auto-save conversations</strong> in <strong>Settings → Chat</strong> at any time if you prefer your questions and answers not to be written to the database.
+                </div>
+              </div>
+              <span class="priv-tag">User Controlled</span>
+            </div>
+
+            <div class="priv-row">
+              <div>
+                <div class="priv-row-title">Revoke Custom API Keys or Request Account Deletion</div>
+                <div class="priv-row-sub">
+                  Click <strong>Remove Saved Key</strong> in <strong>Settings → API Keys</strong> to immediately purge your encrypted key from our database, or contact <a href="mailto:mohammadhu1058@gmail.com" style="color:var(--accent);text-decoration:underline;">mohammadhu1058@gmail.com</a> to request full account deletion.
+                </div>
+              </div>
+              <a href="mailto:mohammadhu1058@gmail.com" class="btn">Contact Support</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 5. Terms of Use ── -->
+        <section class="set-section" data-tab="terms" role="tabpanel" aria-labelledby="tab-terms" hidden>
+          <h2 class="set-h">Terms of Use &amp; Academic Integrity</h2>
+          <p class="set-sub">Guidelines for using AI Student Helper responsibly as a learning companion.</p>
+
+          <div class="priv-prose">
+            <p>
+              <strong>1. Educational Purpose:</strong> AI Student Helper is provided as a study aid and tutoring companion to help students understand academic concepts step by step. Students are responsible for following their school or university's academic integrity policies.
+            </p>
+            <p>
+              <strong>2. AI Accuracy Disclaimer:</strong> Responses are generated by large language models (Groq Llama 3, Google Gemini, Anthropic Claude, or OpenAI). While we strive for clarity and accuracy, AI outputs may occasionally contain errors or omissions. Always verify critical formulas, citations, and exam preparation material.
+            </p>
+            <p>
+              <strong>3. Responsible Use &amp; Custom API Keys:</strong> You agree not to submit unlawful, abusive, or harmful content. When using the Bring Your Own API Key (BYOK) feature, any usage billed by your chosen AI provider (Anthropic, Google, OpenAI, or Groq) under your personal API key is governed by your agreement with that provider.
+            </p>
+            <p>
+              <strong>4. Contact:</strong> For any privacy, security, or terms inquiries, please contact Mohammad at <a href="mailto:mohammadhu1058@gmail.com" style="color:var(--accent);text-decoration:underline;">mohammadhu1058@gmail.com</a>.
+            </p>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .priv-ver-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 500;
+    color: var(--text-2); background: var(--bg-panel); border: 1px solid var(--border);
+  }
+  .priv-ver-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .priv-hero {
+    display: flex; align-items: center; gap: 16px; padding-bottom: 20px;
+    margin-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+  .priv-logo {
+    width: 56px; height: 56px; border-radius: 15px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(217, 119, 87, 0.35);
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .priv-heading {
+    font-family: var(--font-serif); font-size: 23px; font-weight: 400;
+    color: var(--text); margin: 0 0 4px;
+  }
+  .priv-tagline {
+    font-size: 13.5px; color: var(--text-3); margin: 0; line-height: 1.5;
+  }
+  .priv-prose p {
+    font-size: 14.5px; color: var(--text-2); line-height: 1.75; margin: 0 0 14px;
+  }
+  .priv-prose strong { color: var(--text); font-weight: 500; }
+  .priv-prose code, .priv-card-desc code, .priv-row-sub code {
+    font-family: var(--font-mono); font-size: 12.5px;
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 1px 6px; border-radius: 5px; color: var(--text);
+  }
+  .priv-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 16px;
+  }
+  .priv-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .priv-card-ic {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center;
+  }
+  .priv-card-title {
+    font-size: 15px; font-weight: 600; color: var(--text); margin: 0;
+  }
+  .priv-card-desc {
+    font-size: 13.5px; color: var(--text-3); line-height: 1.6; margin: 0;
+  }
+  .priv-list {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .priv-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 15px 18px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; flex-wrap: wrap;
+  }
+  .priv-row > div {
+    flex: 1 1 420px;
+  }
+  .priv-row-title {
+    font-size: 14.5px; font-weight: 500; color: var(--text);
+  }
+  .priv-row-sub {
+    font-size: 13px; color: var(--text-3); margin-top: 4px; line-height: 1.55;
+  }
+  .priv-tag {
+    font-size: 12px; color: var(--text-2); background: var(--bg-panel);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px;
+    white-space: nowrap;
+  }
+  @media (max-width: 720px) {
+    .priv-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .priv-hero {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .priv-row .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  initTabs('ash.privacyTab', 'overview');
+</script>
+{% endblock %}

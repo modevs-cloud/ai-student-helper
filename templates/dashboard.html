@@ -1,7 +1,25 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
 {% block title %}Chat — AI Student Helper{% endblock %}
 
-{% block content %}
+{% block topbar_left %}
+  <span class="topbar-title" id="chat-title">{% if chat_history %}{{ chat_history[0].question|truncate(60) }}{% else %}New chat{% endif %}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  <!-- Save Chat -->
+  <a href="{{ url_for('dashboard', save_chat=1) }}" class="btn ch-save-btn" id="save-chat-btn" title="Save chat">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    <span>Save<span class="hide-mobile"> chat</span></span>
+  </a>
+  <!-- Clear Chat -->
+  <a href="{{ url_for('dashboard', clear=1) }}" class="btn btn-danger ch-clear-btn" id="clear-chat-btn" title="Clear chat history"
+     onclick="return confirm('Clear all chat history permanently? This cannot be undone.')">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    <span>Clear<span class="hide-mobile"> chat</span></span>
+  </a>
+{% endblock %}
+
+{% block page %}
 
 {% if session_token %}
   <!-- Expose session token to iOS WKWebView for seamless authentication integration -->
@@ -17,188 +35,182 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 
+<!-- DotLottie player for AI thinking animation -->
+<script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.6.2/dist/dotlottie-wc.js" type="module"></script>
+
 {% set chat_history = chat_history if chat_history is defined else [] %}
 
-<div class="ch-page" style="display:flex; flex-direction:column; height:calc(100vh - 56px); background:#0a0a0a; font-family:'Inter',system-ui,sans-serif;">
+{# Small reusable pieces #}
+{% macro avatar() %}{% if user.picture %}<img class="avatar" src="{{ user.picture }}" alt="{{ name }}" referrerpolicy="no-referrer">{% else %}<div class="avatar avatar-fallback" aria-hidden="true">{{ name[0]|upper if name else 'U' }}</div>{% endif %}{% endmacro %}
+{% macro spark(size=32) %}<dotlottie-wc src="{{ url_for('static', filename='thinking.lottie') }}?v=2" autoplay loop style="width: {{ size }}px; height: {{ size }}px; display: inline-block;"></dotlottie-wc>{% endmacro %}
+{% macro copy_btn() %}<button type="button" class="icon-btn msg-copy" onclick="copyAnswer(this)" aria-label="Copy answer" title="Copy answer"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>{% endmacro %}
+{% set avatar_html %}{{ avatar() }}{% endset %}
+{% set spark_html %}{{ spark(32) }}{% endset %}
+{% set copy_html %}{{ copy_btn() }}{% endset %}
 
-  <!-- ── Top Toolbar ── This holds the subject selector, model selector, and chat controls -->
-  <div class="ch-toolbar" style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; border-bottom:1px solid #1e1e1e; background:#0d0d0d; flex-shrink:0;">
-    
-    <div style="display:flex; align-items:center; gap:0.6rem;">
+{% set current_subject = subject if subject else default_subject %}
+{% set current_model_label = custom_model_label if (model == 'custom' and custom_model_label) else ('Gemini' if model == 'gemini' else 'Groq Llama 3') %}
 
-      <!-- Subject dropdown -->
-      <div class="ch-dropdown" id="subj-dd" style="position:relative;">
-        <button type="button" class="ch-pill" id="subj-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex; align-items:center; gap:6px; background:#161616; border:1px solid #2a2a2a; border-radius:999px; padding:0.4rem 0.9rem; font-size:0.82rem; color:#e5e5e5; cursor:pointer; transition:all 0.15s;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          <span id="subj-label">{{ subject if subject else default_subject }}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div id="subj-menu" class="ch-menu" role="menu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; background:#111; border:1px solid #2a2a2a; border-radius:10px; padding:0.4rem; min-width:180px; z-index:100; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-          {% for s in subjects %}
-          <button type="button" class="ch-menu-item subj-item" data-val="{{ s }}" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
-            {{ s }}
-            {% if s == (subject if subject else default_subject) %}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-            {% endif %}
-          </button>
-          {% endfor %}
-        </div>
-      </div>
+<div class="chat-main {% if not chat_history %}is-empty{% endif %}" id="chat-main">
 
-      <!-- Model dropdown -->
-      <div class="ch-dropdown" id="model-dd" style="position:relative;">
-        <button type="button" class="ch-pill" id="model-toggle" aria-haspopup="true" aria-expanded="false" style="display:flex; align-items:center; gap:6px; background:#161616; border:1px solid #2a2a2a; border-radius:999px; padding:0.4rem 0.9rem; font-size:0.82rem; color:#e5e5e5; cursor:pointer; transition:all 0.15s;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-          <span id="model-label">{% if model == 'gemini' %}Gemini{% else %}Groq Llama 3{% endif %}</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div id="model-menu" class="ch-menu" role="menu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; background:#111; border:1px solid #2a2a2a; border-radius:10px; padding:0.4rem; min-width:200px; z-index:100; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-          {% if groq_enabled %}
-          <button type="button" class="ch-menu-item model-item" data-val="groq" data-label="Groq Llama 3" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
-            <div>
-              <div style="font-weight:600; color:#e5e5e5;">Groq Llama 3</div>
-              <div style="font-size:0.72rem; color:#666;">Fast & free</div>
-            </div>
-            {% if model != 'gemini' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
-          </button>
-          {% endif %}
-          {% if gemini_enabled %}
-          <button type="button" class="ch-menu-item model-item" data-val="gemini" data-label="Gemini" role="menuitem" style="display:flex; align-items:center; justify-content:space-between; width:100%; background:none; border:none; padding:0.5rem 0.75rem; border-radius:7px; font-size:0.83rem; color:#ccc; cursor:pointer; text-align:left; transition:background 0.15s;">
-            <div>
-              <div style="font-weight:600; color:#e5e5e5;">Gemini</div>
-              <div style="font-size:0.72rem; color:#666;">Advanced reasoning</div>
-            </div>
-            {% if model == 'gemini' %}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
-          </button>
-          {% endif %}
-        </div>
-      </div>
-
-    </div>
-
-    <div style="display:flex; align-items:center; gap:0.6rem;">
-      <!-- Clear Chat -->
-      <a href="{{ url_for('dashboard', clear=1) }}" class="ch-clear-btn" id="clear-chat-btn" onclick="return confirm('Clear all chat history permanently? This cannot be undone.')" style="display:flex; align-items:center; justify-content:center; gap:6px; background:#2a1515; border:1px solid #3a1a1a; border-radius:9px; padding:0.45rem 1rem; font-size:0.82rem; color:#f87171; text-decoration:none; transition:all 0.15s; white-space:nowrap;" onmouseover="this.style.background='#3a1a1a';" onmouseout="this.style.background='#2a1515';">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        <span>Clear<span class="hide-mobile"> Chat</span></span>
-      </a>
-
-      <!-- Save Chat -->
-      <a href="{{ url_for('dashboard', save_chat=1) }}" class="ch-save-btn" id="save-chat-btn" style="display:flex; align-items:center; justify-content:center; gap:6px; background:#0f2c25; border:1px solid #144b3e; border-radius:9px; padding:0.45rem 1rem; font-size:0.82rem; color:#4ade80; text-decoration:none; transition:all 0.15s; white-space:nowrap;" onmouseover="this.style.background='#144b3e';" onmouseout="this.style.background='#0f2c25';">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        <span>Save<span class="hide-mobile"> Chat</span></span>
-      </a>
-
-      <!-- New Chat -->
-      <a href="{{ url_for('dashboard', new_chat=1) }}" class="ch-new-btn" id="new-chat-btn" onclick="return confirm('Start a new chat session? Your past history will be saved in the History page.')" style="display:flex; align-items:center; justify-content:center; gap:6px; background:#161616; border:1px solid #2a2a2a; border-radius:9px; padding:0.45rem 1rem; font-size:0.82rem; color:#e5e5e5; text-decoration:none; transition:all 0.15s; white-space:nowrap;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        <span>New<span class="hide-mobile"> Chat</span></span>
-      </a>
-    </div>
-  </div>
-
-  <!-- ── Chat Messages ── This area displays the conversation history -->
-  <div class="ch-messages" id="ch-messages" style="flex:1; overflow-y:auto; padding:1.5rem; display:flex; flex-direction:column; gap:1.5rem; max-width:800px; width:100%; margin:0 auto; align-self:stretch;">
-
-    <!-- Jinja2 logic: Check if chat history is empty, to show a welcome message -->
-    {% if not chat_history %}
-      <!-- Empty state: Shown when the user starts a new chat -->
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center; padding:3rem; color:#555;">
-        <div style="width:64px; height:64px; background:#161616; border:1px solid #1e3a2a; border-radius:16px; display:flex; align-items:center; justify-content:center; margin-bottom:1rem;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.5" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        </div>
-        <h2 style="font-size:1.1rem; font-weight:700; color:#888; margin:0 0 0.5rem;">Hey, {{ name }}! 👋</h2>
-        <p style="font-size:0.88rem; color:#555; margin:0;">What are you studying today? Ask me anything!</p>
-        <p style="font-size:0.78rem; color:#2dd4bf; margin-top:0.75rem; font-weight:500; opacity:0.85;">💡 Tip: Pick your subject and AI model from the top bar first, then ask your question!</p>
-        <div id="empty-state-active" style="font-size:0.76rem; color:#666; margin-top:0.85rem; padding:0.45rem 1rem; background:rgba(45,212,191,0.03); border:1px dashed rgba(45,212,191,0.12); border-radius:8px; display:flex; align-items:center; gap:6px;">
-          <span style="width:5px; height:5px; background:#2dd4bf; border-radius:50%;"></span>
-          <span>Selected: <strong id="empty-subj" style="color:#2dd4bf; font-weight:600;">{{ subject if subject else default_subject }}</strong> with <strong id="empty-model" style="color:#2dd4bf; font-weight:600;">{% if model == 'gemini' %}Gemini{% else %}Groq Llama 3{% endif %}</strong></span>
-        </div>
-      </div>
-    {% else %}
-      {% for item in chat_history %}
-
-        <!-- User message -->
-        <div style="display:flex; justify-content:flex-end; align-items:flex-end; gap:10px;">
-          <div style="max-width:72%; background:#2dd4bf; color:#0a0a0a; border-radius:16px 16px 4px 16px; padding:0.75rem 1.1rem; font-size:0.9rem; line-height:1.55; font-weight:500;">
-            {% if item.image_url %}
-              <img src="{{ item.image_url }}" alt="Attached image" style="display:block; max-width:220px; max-height:180px; border-radius:8px; margin-bottom:0.5rem; object-fit:cover; border:2px solid rgba(0,0,0,0.15);">
-            {% endif %}
-            {{ item.question }}
-          </div>
-          {% if user.picture %}
-            <img src="{{ user.picture }}" alt="{{ name }}" style="width:30px; height:30px; border-radius:50%; object-fit:cover; flex-shrink:0;" referrerpolicy="no-referrer">
-          {% else %}
-            <div style="width:30px; height:30px; border-radius:50%; background:#1a2a1e; border:1px solid #2dd4bf; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; color:#2dd4bf; flex-shrink:0;">{{ name[0]|upper if name else 'U' }}</div>
-          {% endif %}
-        </div>
-
-        <!-- AI message -->
-        <div style="display:flex; justify-content:flex-start; align-items:flex-start; gap:10px;">
-          <div style="width:32px; height:32px; background:#161616; border:1px solid #1e3a2a; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-          </div>
-          <div style="max-width:80%;">
-            <div class="ch-ai-bubble {% if loop.last and is_new_answer %}typing-bubble{% endif %}" style="background:#111; border:1px solid #1e1e1e; border-radius:4px 16px 16px 16px; padding:1rem 1.1rem; font-size:0.88rem; line-height:1.65; color:#ccc;">
-              <div class="answer-text" style="white-space:pre-wrap;">{{ item.answer }}</div>
-            </div>
-            <div style="font-size:0.72rem; color:#444; margin-top:5px; padding-left:4px;">{{ item.time }} · {{ item.model }}</div>
-          </div>
-        </div>
-
-      {% endfor %}
-    {% endif %}
+  <!-- ── Chat Messages ── This area displays the conversation (and the welcome screen when empty) -->
+  <div class="ch-messages" id="ch-messages">
 
     <!-- Flash/error messages -->
     {% with messages = get_flashed_messages() %}
       {% if messages %}{% for msg in messages %}
-        <div style="text-align:center; font-size:0.82rem; color:#4ade80; background:#0d2a22; border:1px solid #1a3a2a; border-radius:8px; padding:0.5rem 1rem;">{{ msg }}</div>
+        <div class="notice">{{ msg }}</div>
       {% endfor %}{% endif %}
     {% endwith %}
     {% if error %}
-      <div style="text-align:center; font-size:0.82rem; color:#f87171; background:#2a1515; border:1px solid #3a1a1a; border-radius:8px; padding:0.5rem 1rem;">⚠️ {{ error }}</div>
+      <div class="notice err">{{ error }}</div>
     {% endif %}
+
+    <!-- Empty state: shown when the user starts a new chat -->
+    <div class="hero" id="empty-hero">
+      <h1 class="hero-title">
+        <span class="hero-spark">{{ spark(48) }}</span>
+        <span><span id="greet">Welcome</span>, {{ name }}</span>
+      </h1>
+      <p class="hero-sub">What are you studying today? Pick a subject and model below, then ask anything.</p>
+    </div>
+
+    <!-- Jinja2 logic: loop through the saved conversation -->
+    {% for item in chat_history %}
+
+      <!-- User message -->
+      <div class="msg msg-user">
+        {{ avatar() }}
+        <div class="bubble">{% if item.image_url %}<img class="msg-img" src="{{ item.image_url }}" alt="Attached image">{% endif %}{{ item.question }}</div>
+      </div>
+
+      <!-- AI message -->
+      <div class="msg msg-ai">
+        <div class="ch-ai-bubble {% if loop.last and is_new_answer %}typing-bubble{% endif %}"><div class="answer-text">{{ item.answer }}</div></div>
+        <div class="msg-foot">
+          <span class="msg-spark">{{ spark(32) }}</span>
+          <div class="msg-foot-r">
+            {{ copy_btn() }}
+            <span class="meta-text">{% if session.get('settings', {}).get('show_timestamps', True) %}{{ item.time }} · {% endif %}{{ item.model }}</span>
+          </div>
+        </div>
+      </div>
+
+    {% endfor %}
 
   </div>
 
-  <!-- ── Input Area ── The text box at the bottom where the user types their question -->
-  <div style="flex-shrink:0; border-top:1px solid #1e1e1e; background:#0d0d0d; padding:0.75rem 1rem 1rem;">
-    <form method="POST" action="{{ url_for('dashboard') }}" id="ask-form" enctype="multipart/form-data" style="max-width:800px; margin:0 auto;">
-      <div id="subject-guide-note" style="font-size:0.73rem; color:#777; margin-bottom:8px; display:flex; align-items:center; gap:6px; padding:0.35rem 0.75rem; background:rgba(45,212,191,0.04); border:1px solid rgba(45,212,191,0.1); border-radius:8px; width:fit-content; opacity:0.9; transition:all 0.2s;">
-        <span style="display:inline-flex; align-items:center; justify-content:center; width:6px; height:6px; background:#2dd4bf; border-radius:50%; animation:pulse 2s infinite;"></span>
-        <span>Pick subject then ask questions · Active: <strong id="active-subj-guide" style="color:#2dd4bf; font-weight:600;">{{ subject if subject else default_subject }}</strong></span>
-      </div>
-      <input type="hidden" name="subject" id="subject-hidden" value="{{ subject if subject else default_subject }}">
+  <!-- ── Input Area ── The text box where the user types their question -->
+  <div class="composer-wrap">
+    <form method="POST" action="{{ url_for('dashboard') }}" id="ask-form" enctype="multipart/form-data" class="composer">
+      <input type="hidden" name="subject" id="subject-hidden" value="{{ current_subject }}">
       <input type="hidden" name="model" id="model-hidden" value="{{ model if model else 'groq' }}">
 
-      <div style="background:#111; border:1px solid #2a2a2a; border-radius:14px; padding:0.75rem 1rem; transition:border-color 0.18s;" id="input-box">
+      <div class="composer-box" id="input-box">
         <textarea
           name="question"
           id="question-input"
-          placeholder="Ask anything about your studies..."
+          placeholder="How can I help you today?"
           rows="2"
           required
-          style="width:100%; background:transparent; border:none; outline:none; color:#e5e5e5; font-size:0.92rem; font-family:inherit; resize:none; line-height:1.5; min-height:44px; max-height:200px;"
           aria-label="Ask a question"
         ></textarea>
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.5rem;">
-          <div style="display:flex; align-items:center; gap:0.6rem;">
-            <span style="font-size:0.72rem; color:#444; display:flex; align-items:center; gap:5px;">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M8 11l3 3L16 8"/></svg>
-              ⌘ Enter to send
-            </span>
+
+        <div class="composer-row">
+          <div class="composer-l">
+
+            <!-- Subject dropdown -->
+            <div class="ch-dropdown" id="subj-dd">
+              <button type="button" class="pill-btn ch-pill" id="subj-toggle" aria-haspopup="true" aria-expanded="false" title="Subject">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <span id="subj-label">{{ current_subject }}</span>
+                <svg class="ic pill-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div id="subj-menu" class="ch-menu" role="menu">
+                {% for s in subjects %}
+                <button type="button" class="menu-item subj-item" data-val="{{ s }}" role="menuitem">
+                  <span>{{ s }}</span>
+                  {% if s == current_subject %}
+                  <svg class="ic menu-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                  {% endif %}
+                </button>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Model dropdown -->
+            <div class="ch-dropdown" id="model-dd">
+              <button type="button" class="pill-btn ch-pill" id="model-toggle" aria-haspopup="true" aria-expanded="false" title="AI model">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                <span id="model-label">{{ current_model_label }}</span>
+                <svg class="ic pill-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div id="model-menu" class="ch-menu" role="menu">
+                {% if groq_enabled %}
+                <button type="button" class="menu-item model-item" data-val="groq" data-label="Groq Llama 3" role="menuitem">
+                  <span>
+                    <span class="menu-name">Groq Llama 3</span>
+                    <span class="menu-desc">Fast &amp; free (Built-in)</span>
+                  </span>
+                  {% if model == 'groq' or (model != 'gemini' and model != 'custom') %}<svg class="ic menu-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
+                </button>
+                {% endif %}
+                {% if gemini_enabled %}
+                <button type="button" class="menu-item model-item" data-val="gemini" data-label="Gemini" role="menuitem">
+                  <span>
+                    <span class="menu-name">Gemini</span>
+                    <span class="menu-desc">Advanced reasoning (Built-in)</span>
+                  </span>
+                  {% if model == 'gemini' %}<svg class="ic menu-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
+                </button>
+                {% endif %}
+                {% if has_custom_api %}
+                <button type="button" class="menu-item model-item" data-val="custom" data-label="{{ custom_model_label }}" role="menuitem">
+                  <span>
+                    <span class="menu-name">{{ custom_model_label }}</span>
+                    <span class="menu-desc">Your {{ custom_provider_label }} API Key</span>
+                  </span>
+                  {% if model == 'custom' %}<svg class="ic menu-check" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>{% endif %}
+                </button>
+                {% endif %}
+                <a href="{{ url_for('settings') }}" class="menu-item" role="menuitem" onclick="try{sessionStorage.setItem('ash.settingsTab','apikeys');}catch(e){}" style="border-top: 1px solid var(--border); margin-top: 4px; padding-top: 9px; color: var(--accent); font-size: 12.5px;">
+                  <span>{% if has_custom_api %}Manage custom API key ({{ custom_provider_label }}) →{% else %}+ Use your own API key (Claude, Gemini, OpenAI…) →{% endif %}</span>
+                </a>
+              </div>
+            </div>
+
           </div>
-          <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span id="char-count" style="font-size:0.72rem; color:#444;">0 / 2000</span>
-            <button type="submit" id="send-btn" style="display:flex; align-items:center; gap:6px; background:#2dd4bf; color:#0a0a0a; border:none; border-radius:9px; padding:0.5rem 1rem; font-size:0.85rem; font-weight:700; cursor:pointer; transition:background 0.18s;" aria-label="Get Help">
-              Get Help
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+
+          <div class="composer-r">
+            <span id="char-count" class="char-count">0 / 2000</span>
+            <button type="submit" id="send-btn" class="send-btn" aria-label="Get Help" title="Get Help (Enter)">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width:2.4;"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
             </button>
           </div>
         </div>
       </div>
-      <p style="text-align:center; font-size:0.72rem; color:#333; margin:0.5rem 0 0;">AI responses may not always be accurate. Verify important information.</p>
+
+      <p class="composer-note">Press Enter to send · Shift + Enter for a new line · AI responses may not always be accurate — verify important information.</p>
     </form>
+
+    <!-- Recent chats: only shown on the empty welcome screen -->
+    {% set recent_cards = sidebar_recents(3) %}
+    {% if recent_cards %}
+    <section class="recent-cards" aria-label="Recent chats">
+      <div class="rc-head">
+        <span class="rc-head-l"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Your recent chats</span>
+        <a href="{{ url_for('history') }}" class="rc-all">View all →</a>
+      </div>
+      <div class="rc-grid">
+        {% for c in recent_cards %}
+        <a href="{{ url_for('dashboard', load_chat_id=c.chat_id) }}" class="rc-card">
+          <span class="rc-title">{{ c.title }}</span>
+          <span class="rc-meta">{% if c.subject %}{{ c.subject }} · {% endif %}{{ c.time }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
   </div>
 
 </div>
@@ -209,25 +221,58 @@
   const charCount = document.getElementById('char-count');
   const sendBtn = document.getElementById('send-btn');
   const inputBox = document.getElementById('input-box');
+  const chatMain = document.getElementById('chat-main');
+
+  // Pieces of markup reused when we build messages on the fly
+  const USER_AVATAR_HTML = {{ avatar_html|tojson }};
+  const SPARK_HTML = {{ spark_html|tojson }};
+  const COPY_HTML = {{ copy_html|tojson }};
+
+  // Friendly time-of-day greeting (uses the student's own local clock; 5 AM–11:59 AM = morning, 12 PM–4:59 PM = afternoon, 5 PM–4:59 AM = evening)
+  (function () {
+    const g = document.getElementById('greet');
+    if (!g) return;
+    const h = new Date().getHours();
+    g.textContent = (h >= 5 && h < 12) ? 'Good morning' : (h >= 12 && h < 17) ? 'Good afternoon' : 'Good evening';
+  })();
+
+  // Switch from the welcome screen to the conversation layout
+  function enterChatState() {
+    chatMain.classList.remove('is-empty');
+    const title = document.getElementById('chat-title');
+    if (title && title.textContent.trim() === 'New chat') {
+      const q = textarea.value.trim().replace(/\s+/g, ' ');
+      title.textContent = q.length > 60 ? q.slice(0, 57) + '…' : q;
+    }
+  }
 
   // Auto-resize textarea
   textarea.addEventListener('input', () => {
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    textarea.style.height = Math.min(textarea.scrollHeight, 220) + 'px';
     charCount.textContent = `${textarea.value.length} / 2000`;
+    charCount.classList.toggle('over', textarea.value.length > 2000);
   });
-
-  // Focus ring
-  textarea.addEventListener('focus', () => { inputBox.style.borderColor = '#2dd4bf44'; });
-  textarea.addEventListener('blur', () => { inputBox.style.borderColor = '#2a2a2a'; });
 
   // Plain Enter to submit, Shift+Enter for new line
   textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       form.requestSubmit();
     }
   });
+
+  // Copy an AI answer to the clipboard
+  window.copyAnswer = function (btn) {
+    const msg = btn.closest('.msg-ai');
+    const el = msg && msg.querySelector('.answer-text');
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText).then(() => {
+      const original = btn.innerHTML;
+      btn.innerHTML = '<svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;color:var(--accent);stroke-width:2.4;"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => { btn.innerHTML = original; }, 1500);
+    }).catch(() => {});
+  };
 
   // AJAX form submission and optimistic UI
   let isSubmitting = false;
@@ -243,47 +288,43 @@
     isSubmitting = true;
     sendBtn.disabled = true;
     const originalBtnHtml = sendBtn.innerHTML;
-    sendBtn.innerHTML = '<span style="width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#0a0a0a;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Getting Help...';
+    sendBtn.innerHTML = '<span class="spinner"></span>';
 
     const msgsContainer = document.getElementById('ch-messages');
 
+    enterChatState();
+
     // 2. Optimistically render the user's question bubble
     const userBubble = document.createElement('div');
-    userBubble.style.display = 'flex';
-    userBubble.style.justifyContent = 'flex-end';
-    userBubble.style.alignItems = 'flex-end';
-    userBubble.style.gap = '10px';
-    userBubble.style.marginBottom = '20px';
-    userBubble.innerHTML = `
-      <div style="max-width:72%; background:#2dd4bf; color:#0a0a0a; border-radius:16px 16px 4px 16px; padding:0.75rem 1.1rem; font-size:0.9rem; line-height:1.55; font-weight:500; white-space:pre-wrap;">${escapeHtml(q)}</div>
-    `;
+    userBubble.className = 'msg msg-user';
+    userBubble.innerHTML = USER_AVATAR_HTML + '<div class="bubble"></div>';
+    userBubble.querySelector('.bubble').textContent = q;
     if (msgsContainer) msgsContainer.appendChild(userBubble);
-    
+
     // Clear textarea and update height immediately
     textarea.value = '';
-    textarea.style.height = '44px';
+    textarea.style.height = '';
     charCount.textContent = '0 / 2000';
+    charCount.classList.remove('over');
 
-    // 3. Render a "Thinking" AI bubble placeholder
+    // 3. Render a "Thinking" AI bubble placeholder with Lottie animation
     const aiBubbleContainer = document.createElement('div');
-    aiBubbleContainer.style.display = 'flex';
-    aiBubbleContainer.style.justifyContent = 'flex-start';
-    aiBubbleContainer.style.alignItems = 'flex-start';
-    aiBubbleContainer.style.gap = '10px';
-    aiBubbleContainer.style.marginBottom = '20px';
+    aiBubbleContainer.className = 'msg msg-ai';
     aiBubbleContainer.innerHTML = `
-      <div style="width:32px; height:32px; background:#161616; border:1px solid #1e3a2a; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-      </div>
-      <div style="max-width:80%; width:100%;">
-        <div class="ch-ai-bubble typing-bubble" style="background:#111; border:1px solid #1e1e1e; border-radius:4px 16px 16px 16px; padding:1rem 1.1rem; font-size:0.88rem; line-height:1.65; color:#ccc;">
-          <div class="answer-text" style="display:flex; gap:4px; padding:6px 0;">
-             <span style="width:6px;height:6px;background:#2dd4bf;border-radius:50%;animation:pulse 1s infinite 0s;"></span>
-             <span style="width:6px;height:6px;background:#2dd4bf;border-radius:50%;animation:pulse 1s infinite 0.2s;"></span>
-             <span style="width:6px;height:6px;background:#2dd4bf;border-radius:50%;animation:pulse 1s infinite 0.4s;"></span>
+      <div class="ch-ai-bubble typing-bubble">
+        <div class="answer-text">
+          <div class="thinking-lottie-wrap">
+            <dotlottie-wc src="{{ url_for('static', filename='thinking-effect.json') }}?v=1" autoplay loop style="width: 48px; height: 48px; display: inline-block;"></dotlottie-wc>
+            <span class="thinking-label">Thinking...</span>
           </div>
         </div>
-        <div class="meta-text" style="font-size:0.72rem; color:#444; margin-top:5px; padding-left:4px;">Thinking...</div>
+      </div>
+      <div class="msg-foot">
+        <span class="msg-spark">${SPARK_HTML}</span>
+        <div class="msg-foot-r">
+          ${COPY_HTML}
+          <span class="meta-text">Thinking...</span>
+        </div>
       </div>
     `;
     if (msgsContainer) {
@@ -291,7 +332,10 @@
       msgsContainer.scrollTop = msgsContainer.scrollHeight;
     }
 
-    // 4. Perform the AJAX request
+    // 4. Perform the AJAX request (and enforce a minimum thinking pause so it never snaps instantly)
+    const thinkingStartedAt = Date.now();
+    const MIN_THINKING_MS = 2200;
+
     try {
       const formData = new FormData(form);
       formData.set("question", q); // ensure we send the captured string
@@ -318,20 +362,26 @@
       }
 
       const data = await res.json();
-      
+
       if (data.error) throw new Error(data.error);
+
+      // Keep the "Thinking..." animation visible for at least MIN_THINKING_MS
+      const elapsed = Date.now() - thinkingStartedAt;
+      if (elapsed < MIN_THINKING_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_THINKING_MS - elapsed));
+      }
 
       // 5. Replace "Thinking..." with the AI response text for typewriter
       const answerEl = aiBubbleContainer.querySelector('.answer-text');
       const metaEl = aiBubbleContainer.querySelector('.meta-text');
       if (answerEl) {
-         answerEl.setAttribute('style', 'white-space:pre-wrap;'); // safely reset from flex row to standard block flow
          answerEl.textContent = data.answer; // Will be cleared by initTypewriter
       }
       if (metaEl) {
-         metaEl.textContent = `${data.time} · ${data.model}`;
+         const showTs = {{ 'true' if session.get('settings', {}).get('show_timestamps', True) else 'false' }};
+         metaEl.textContent = showTs ? `${data.time} · ${data.model}` : `${data.model}`;
       }
-      
+
       // 6. Trigger typewriter
       initTypewriter(answerEl);
 
@@ -351,7 +401,13 @@
             userMsg = errText;
           }
         } catch (_) { /* ignore parse errors */ }
-        answerEl.innerHTML = `<span style="color:#f87171;">⚠️ ${userMsg}</span>`;
+        answerEl.innerHTML = '';
+        const errSpan = document.createElement('span');
+        errSpan.className = 'err-text';
+        errSpan.textContent = userMsg;
+        answerEl.appendChild(errSpan);
+        const metaEl = aiBubbleContainer.querySelector('.meta-text');
+        if (metaEl) metaEl.textContent = '';
         const bubble = aiBubbleContainer.querySelector('.typing-bubble');
         if (bubble) bubble.classList.remove('typing-bubble');
       }
@@ -373,14 +429,10 @@
       if (btn.dataset.val === selectedVal) {
         const svgNs = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNs, "svg");
-        svg.setAttribute("width", "12");
-        svg.setAttribute("height", "12");
+        svg.setAttribute("class", "ic menu-check");
         svg.setAttribute("viewBox", "0 0 24 24");
-        svg.setAttribute("fill", "none");
-        svg.setAttribute("stroke", "#2dd4bf");
-        svg.setAttribute("stroke-width", "2.5");
         svg.setAttribute("aria-hidden", "true");
-        
+
         const polyline = document.createElementNS(svgNs, "polyline");
         polyline.setAttribute("points", "20 6 9 17 4 12");
         svg.appendChild(polyline);
@@ -400,11 +452,15 @@
     if (emptyModel) {
       let labelText = 'Groq Llama 3';
       if (modelVal === 'gemini') labelText = 'Gemini';
+      else if (modelVal === 'custom') {
+        const modelLabelEl = document.getElementById('model-label');
+        labelText = (modelLabelEl && modelLabelEl.textContent.trim()) || {{ (custom_model_label or 'Custom AI')|tojson }};
+      }
       emptyModel.textContent = labelText;
     }
   }
 
-  // Scroll dropdown menus
+  // Dropdown menus
   function setupDropdown(toggleId, menuId, items, labelId, hiddenId, formatFn) {
     const toggle = document.getElementById(toggleId);
     const menu   = document.getElementById(menuId);
@@ -420,13 +476,11 @@
     });
 
     document.querySelectorAll('.' + items).forEach(btn => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#1a1a1a'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = 'none'; });
       btn.addEventListener('click', () => {
         const val = btn.dataset.val;
         label.textContent = formatFn(val, btn.dataset.label);
         if (hidden) hidden.value = val;
-        
+
         // Save to Flask Session
         if (hiddenId === 'subject-hidden') {
           if (window.updateSessionState) window.updateSessionState('active_subject', val);
@@ -458,6 +512,11 @@
   setupDropdown('subj-toggle', 'subj-menu', 'subj-item', 'subj-label', 'subject-hidden', (val) => val);
   setupDropdown('model-toggle', 'model-menu', 'model-item', 'model-label', 'model-hidden', (val, label) => label || val);
 
+  // Close menus with Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.ch-menu').forEach(m => m.style.display = 'none');
+  });
+
   // Initialize UI displays on DOMContentLoaded
   document.addEventListener('DOMContentLoaded', () => {
     const subjHidden = document.getElementById('subject-hidden');
@@ -479,6 +538,12 @@
         hljs.highlightElement(block);
       } catch (e) {}
     });
+
+    // Formatting above changes the height of past messages, so jump to the latest one again
+    {% if not is_new_answer %}
+    const pastMsgs = document.getElementById('ch-messages');
+    if (pastMsgs) pastMsgs.scrollTop = pastMsgs.scrollHeight;
+    {% endif %}
   });
 
   // ── Escape HTML utility ────────────────────────────────────────────────────
@@ -498,7 +563,7 @@
       langLabel: 'plaintext',
       langClass: 'plaintext'
     };
-    
+
     if (l === 'python' || l === 'py') {
       meta.langLabel = 'python';
       meta.langClass = 'python';
@@ -544,12 +609,12 @@
     const codeEl = document.getElementById(codeId);
     if (!codeEl) return;
     const codeText = codeEl.textContent;
-    
+
     navigator.clipboard.writeText(codeText).then(() => {
       const originalHTML = btn.innerHTML;
       btn.innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
-        <span style="color:#2dd4bf; font-weight:600;">Copied!</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97757" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
+        <span style="color:#d97757; font-weight:600;">Copied!</span>
       `;
       setTimeout(() => {
         btn.innerHTML = originalHTML;
@@ -561,7 +626,7 @@
   function createIDEMarkup(code, langClass, langLabel) {
     const escapedCode = escapeHtml(code);
     const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
-    
+
     return `
       <div class="code-block-container">
         <div class="code-block-header">
@@ -575,7 +640,7 @@
           <pre class="code-block-pre"><code id="${codeId}" class="code-block-code language-${langClass}">${escapedCode}</code></pre>
         </div>
       </div>
-    `;
+    `.replace(/>\s+</g, '><').trim(); // no stray whitespace around the block (answers use pre-wrap)
   }
 
   // ── Parse full response into formatted segments ─────────────────────────────
@@ -608,19 +673,42 @@
     return segments;
   }
 
+  // ── Format text segment (Markdown headings, dividers, bold/italic, details) ──
+  function formatTextSegment(raw) {
+    let textHtml = escapeHtml(raw);
+    // Restore safe <details>, <summary>, <b>, <i> tags if the AI used them for a hint block
+    textHtml = textHtml
+      .replace(/&lt;details&gt;\s*/gi, '<details class="md-details">')
+      .replace(/\s*&lt;\/details&gt;/gi, '</details>')
+      .replace(/&lt;summary&gt;([\s\S]*?)&lt;\/summary&gt;\s*/gi, '<summary class="md-summary">$1</summary>')
+      .replace(/&lt;b&gt;([\s\S]*?)&lt;\/b&gt;/gi, '<strong>$1</strong>')
+      .replace(/&lt;i&gt;([\s\S]*?)&lt;\/i&gt;/gi, '<em>$1</em>');
+    // Horizontal rule ---
+    textHtml = textHtml.replace(/^\s*---\s*$/gm, '<hr class="md-hr">');
+    // Headings ### / ## / #
+    textHtml = textHtml.replace(/^#{1,4}\s+(.+)$/gm, '<strong class="md-heading">$1</strong>');
+    // Bold, italic, inline code, bullets
+    textHtml = textHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    textHtml = textHtml.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    textHtml = textHtml.replace(/\`(.*?)\`/g, '<code class="inline-code">$1</code>');
+    textHtml = textHtml.replace(/^(?:\*|-)\s+(.+)$/gm, '• $1');
+    textHtml = textHtml.replace(/\n/g, '<br>');
+    // Clean up extra <br> around block elements
+    textHtml = textHtml
+      .replace(/<br>\s*(<hr class="md-hr">)\s*<br>/g, '$1')
+      .replace(/(<details class="md-details">)<br>/g, '$1')
+      .replace(/(<\/summary>)<br>/g, '$1')
+      .replace(/<br>(<\/details>)/g, '$1');
+    return textHtml;
+  }
+
   // ── Render whole text to unified HTML ──────────────────────────────────────
   function renderMessage(rawText) {
     const segments = parseSegments(rawText);
     let html = '';
     segments.forEach(seg => {
       if (seg.type === 'text') {
-        let textHtml = escapeHtml(seg.content);
-        textHtml = textHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        textHtml = textHtml.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        textHtml = textHtml.replace(/\`(.*?)\`/g, '<code class="inline-code">$1</code>');
-        textHtml = textHtml.replace(/^(?:\*|-)\s+(.+)$/gm, '• $1');
-        textHtml = textHtml.replace(/\n/g, '<br>');
-        html += `<span>${textHtml}</span>`;
+        html += `<span>${formatTextSegment(seg.content)}</span>`;
       } else if (seg.type === 'code') {
         const meta = getLanguageMeta(seg.lang);
         html += createIDEMarkup(seg.content, meta.langClass, meta.langLabel);
@@ -678,17 +766,11 @@
           if (charIdx < seg.content.length) {
             currentTextSpan.textContent += seg.content.charAt(charIdx++);
             msgs.scrollTop = 99999;
-            setTimeout(typeNextChar, 2);
+            setTimeout(typeNextChar, 12);
           } else {
             // Segment complete: format markdown inline elements
             let rawTyped = currentTextSpan.textContent;
-            let formatted = escapeHtml(rawTyped);
-            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-            formatted = formatted.replace(/\`(.*?)\`/g, '<code class="inline-code">$1</code>');
-            formatted = formatted.replace(/^(?:\*|-)\s+(.+)$/gm, '• $1');
-            formatted = formatted.replace(/\n/g, '<br>');
-            currentTextSpan.innerHTML = formatted;
+            currentTextSpan.innerHTML = formatTextSegment(rawTyped);
 
             segIdx++;
             charIdx = 0;
@@ -699,7 +781,7 @@
           if (charIdx === 0) {
             currentLangMeta = getLanguageMeta(seg.lang);
             const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
-            
+
             const container = document.createElement('div');
             container.className = 'code-block-container';
             container.innerHTML = `
@@ -714,7 +796,7 @@
                 <pre class="code-block-pre"><code id="${codeId}" class="code-block-code language-${currentLangMeta.langClass}"></code></pre>
               </div>
             `;
-            
+
             answerEl.appendChild(container);
             currentCodeEl = container.querySelector('.code-block-code');
             typedCodeString = "";
@@ -724,7 +806,7 @@
             typedCodeString += seg.content.charAt(charIdx++);
             currentCodeEl.textContent = typedCodeString;
             msgs.scrollTop = 99999;
-            setTimeout(typeNextChar, 1);
+            setTimeout(typeNextChar, 6);
           } else {
             try {
               hljs.highlightElement(currentCodeEl);
@@ -744,7 +826,7 @@
             .replace(/^\\\(/, '').replace(/\\\)$/, '')
             .replace(/^\$\$/, '').replace(/\$\$$/, '')
             .replace(/^\$/, '').replace(/\$$/, '');
-            
+
           const wrapper = document.createElement(isDisplay ? 'div' : 'span');
           wrapper.style.display = isDisplay ? 'block' : 'inline';
           answerEl.appendChild(wrapper);
@@ -779,156 +861,255 @@
 
 
 <style>
-  /* Lock body to prevent scrolling and extra empty space on dashboard */
-  body, html { overflow: hidden !important; height: 100%; margin: 0; }
-  
-  /* Hide footer on Dashboard to prevent empty space */
-  .footer { display: none !important; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(45, 212, 191, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); }
+  @keyframes dot { 0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .chat-main { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; }
+
+  .ch-messages {
+    flex: 1; min-height: 0; width: 100%; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 28px;
+    padding: 18px max(24px, calc((100% - 920px) / 2)) 20px;
   }
-  .ch-pill:hover { background: #1e1e1e !important; }
-  .ch-new-btn:hover { background: #1e1e1e !important; border-color: #3a3a3a !important; }
-  .ch-messages::-webkit-scrollbar { width: 5px; }
+  .ch-messages::-webkit-scrollbar { width: 8px; }
   .ch-messages::-webkit-scrollbar-track { background: transparent; }
-  .ch-messages::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 999px; }
+  .ch-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 
-  /* KaTeX overrides for dark theme */
-  .answer-text .katex { color: #e5e5e5; font-size: 1em; }
-  .answer-text .katex-display { margin: 0.75em 0; overflow-x: auto; }
-  .answer-text .katex-display > .katex { padding: 0.5rem 0.75rem; background: rgba(45,212,191,0.06); border-left: 3px solid #2dd4bf; border-radius: 0 6px 6px 0; }
+  /* Welcome screen: greeting + composer + recent chats centred as one group */
+  .hero { display: none; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 0 0 6px; }
+  .chat-main.is-empty { justify-content: center; padding-bottom: 4vh; overflow-y: auto; }
+  .chat-main.is-empty .ch-messages { flex: 0 0 auto; overflow: visible; padding-bottom: 8px; }
+  .chat-main.is-empty .hero { display: flex; }
 
-  /* Premium ChatGPT/Claude-style Code Block Aesthetics */
-  .code-block-container {
-    background: #0b0c10 !important;
-    border: 1px solid #1c1d22 !important;
-    border-radius: 8px;
-    margin: 1.25rem 0;
-    overflow: hidden;
-    white-space: normal !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; border-radius: 999px;
+    border: 1px solid var(--border-strong); font-size: 13px; color: var(--text-2);
+  }
+  .hero-pill strong { color: var(--text); font-weight: 500; }
+  .hero-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .hero-title {
+    display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 0;
+    font-family: var(--font-serif); font-weight: 400; font-size: clamp(30px, 5vw, 44px);
+    line-height: 1.15; letter-spacing: -0.015em; color: var(--text);
+  }
+  .hero-spark { color: var(--accent); display: inline-flex; }
+  .hero-sub { margin: 0; font-size: 15px; color: var(--text-3); max-width: 480px; }
+
+  /* ── Messages ───────────────────────────────────────────── */
+  .msg { display: flex; flex-direction: column; }
+  .msg-user { flex-direction: row; align-items: flex-start; gap: 12px; }
+  .msg-user .avatar { margin-top: 3px; }
+  .msg-user .bubble {
+    background: var(--user-bg); border-radius: 12px; padding: 10px 16px;
+    font-size: 15.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+    max-width: calc(100% - 44px);
+  }
+  .msg-img { display: block; max-width: 220px; max-height: 180px; border-radius: 8px; margin-bottom: 8px; object-fit: cover; }
+
+  .ch-ai-bubble {
+    font-family: var(--font-serif); font-size: 17.5px; line-height: 1.7; color: var(--text);
+    padding: 0 4px; word-break: break-word;
+  }
+  .answer-text { white-space: pre-wrap; }
+  .msg-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 0 4px; }
+  .msg-spark { color: var(--accent); display: inline-flex; }
+  .msg-foot-r { display: flex; align-items: center; gap: 8px; }
+  .meta-text { font-size: 12.5px; color: var(--text-3); }
+  .msg-copy { width: 28px; height: 28px; }
+  .err-text { color: var(--danger); font-family: var(--font-ui); font-size: 15px; }
+
+  .typing-dots { display: inline-flex; gap: 5px; padding: 8px 0; }
+  .typing-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: dot 1.2s infinite ease-in-out; }
+  .typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+  .thinking-lottie-wrap {
+    display: inline-flex; align-items: center; gap: 10px; padding: 4px 0;
+  }
+  .thinking-label {
+    font-family: var(--font-ui); font-size: 14px; color: var(--text-3); font-style: italic;
   }
 
+  /* ── Composer ───────────────────────────────────────────── */
+  .composer-wrap { flex-shrink: 0; width: 100%; padding: 4px 24px 16px; }
+  .composer { max-width: 920px; width: 100%; margin: 0 auto; }
+  .composer-box {
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px;
+    padding: 14px 14px 10px 18px; box-shadow: 0 2px 14px rgba(0, 0, 0, 0.16);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .composer-box:focus-within { border-color: var(--border-strong); box-shadow: 0 4px 22px rgba(0, 0, 0, 0.22); }
+  #question-input {
+    display: block; width: 100%; background: transparent; border: 0; outline: 0; resize: none;
+    color: var(--text); font: inherit; font-size: 16px; line-height: 1.5;
+    min-height: 48px; max-height: 220px; padding: 0;
+  }
+  #question-input::placeholder { color: var(--text-3); }
+  .chat-main.is-empty #question-input { min-height: 68px; }
+
+  .composer-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+  .composer-l, .composer-r { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .composer-r { gap: 10px; flex-shrink: 0; }
+  .char-count { font-size: 12px; color: var(--text-3); }
+  .char-count.over { color: var(--danger); }
+
+  .ch-dropdown { position: relative; }
+  .pill-btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px;
+    background: transparent; border: 1px solid transparent; border-radius: 9px;
+    font-size: 13.5px; color: var(--text-2); cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  .pill-btn:hover, .pill-btn[aria-expanded="true"] { background: var(--bg-hover); color: var(--text); }
+  .pill-chev { width: 12px; height: 12px; opacity: 0.7; }
+
+  .ch-menu {
+    display: none; position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; min-width: 210px;
+    background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 12px;
+    padding: 6px; box-shadow: var(--shadow-pop);
+  }
+  .menu-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+    background: none; border: 0; padding: 8px 10px; border-radius: 8px; font-size: 14px;
+    color: var(--text-2); cursor: pointer; text-align: left; transition: background 0.12s, color 0.12s;
+  }
+  .menu-item:hover { background: var(--bg-hover); color: var(--text); }
+  .menu-name { display: block; font-weight: 500; color: var(--text); }
+  .menu-desc { display: block; font-size: 12px; color: var(--text-3); }
+  .menu-check { width: 15px; height: 15px; color: var(--accent); stroke-width: 2.4; }
+
+  .send-btn {
+    width: 34px; height: 34px; border-radius: 10px; border: 0; background: var(--accent); color: #fff;
+    display: grid; place-items: center; cursor: pointer; transition: background 0.15s, opacity 0.15s;
+  }
+  .send-btn:hover { background: var(--accent-hover); }
+  .send-btn:disabled { opacity: 0.55; cursor: default; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+  }
+
+  .composer-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--text-3); }
+
+  /* ── Recent chat cards (welcome screen only) ────────────── */
+  .recent-cards { display: none; max-width: 920px; width: 100%; margin: 26px auto 0; }
+  .chat-main.is-empty .recent-cards { display: block; }
+  .rc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13.5px; color: var(--text-2); }
+  .rc-head-l { display: inline-flex; align-items: center; gap: 8px; }
+  .rc-all { color: var(--text-3); font-size: 13px; }
+  .rc-all:hover { color: var(--text); }
+  .rc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .rc-card {
+    display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-height: 96px;
+    padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .rc-card:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+  .rc-title {
+    font-family: var(--font-serif); font-size: 16px; line-height: 1.35; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .rc-meta { font-size: 12px; color: var(--text-3); }
+
+  /* ── KaTeX / inline code / code blocks ──────────────────── */
+  .answer-text .katex { color: var(--text); font-size: 1em; }
+  .answer-text .katex-display { margin: 0.75em 0; overflow-x: auto; }
+  .answer-text .katex-display > .katex { padding: 0.5rem 0.75rem; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
+
+  .code-block-container {
+    background: #0b0c10 !important; border: 1px solid #1c1d22 !important; border-radius: 10px;
+    margin: 1.25rem 0; overflow: hidden; white-space: normal !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); font-family: var(--font-ui);
+  }
   .code-block-header {
-    background: #14161a !important;
-    border-bottom: 1px solid #1c1d22 !important;
-    padding: 8px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    background: #14161a !important; border-bottom: 1px solid #1c1d22 !important;
+    padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; user-select: none;
+  }
+  .code-block-lang { font-family: var(--font-ui); font-size: 0.76rem; color: #888ea8; text-transform: lowercase; font-weight: 500; }
+  .code-block-copy-btn {
+    background: transparent; border: none; color: #888ea8; font-family: var(--font-ui);
+    font-size: 0.76rem; font-weight: 500; padding: 0; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; transition: color 0.15s ease;
+  }
+  .code-block-copy-btn:hover { color: #e5e5e5; }
+  .code-block-body { background: #0b0c10 !important; padding: 16px; overflow-x: auto !important; }
+  .code-block-pre { margin: 0 !important; padding: 0 !important; background: transparent !important; border: none !important; }
+  .code-block-code {
+    font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace !important;
+    font-size: 0.84rem !important; line-height: 1.55 !important; color: #abb2bf !important;
+    background: transparent !important; padding: 0 !important; border: none !important;
+    display: block; white-space: pre !important; text-align: left;
+  }
+  .inline-code {
+    background: var(--accent-soft); border: 1px solid rgba(217, 119, 87, 0.22); color: var(--accent);
+    padding: 2px 6px; border-radius: 5px; font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.82em;
+  }
+  .md-hr {
+    border: 0; border-top: 1px solid var(--border-strong); margin: 18px 0;
+  }
+  .md-heading {
+    display: block; font-family: var(--font-serif); font-size: 1.15em; font-weight: 500;
+    color: var(--text); margin: 8px 0 2px;
+  }
+  .md-details {
+    margin: 10px 0; padding: 10px 14px; border-radius: 10px;
+    background: var(--bg-elev); border: 1px solid var(--border-strong);
+  }
+  .md-summary {
+    cursor: pointer; color: var(--accent); font-family: var(--font-ui); font-size: 14.5px;
     user-select: none;
   }
 
-  .code-block-lang {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 0.76rem;
-    color: #888ea8;
-    text-transform: lowercase;
-    font-weight: 500;
+  /* ── Mobile & PC Responsive Polish ──────────────────────── */
+  @media (min-width: 1400px) {
+    .ch-messages {
+      padding: 22px max(32px, calc((100% - 1020px) / 2)) 24px;
+    }
+    .composer,
+    .recent-cards {
+      max-width: 1020px;
+    }
   }
-
-  .code-block-copy-btn {
-    background: transparent;
-    border: none;
-    color: #888ea8;
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 0.76rem;
-    font-weight: 500;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: color 0.15s ease;
+  @media (max-width: 860px) {
+    .rc-grid { grid-template-columns: 1fr; }
+    .rc-card { min-height: 0; gap: 8px; }
+    .chat-main.is-empty { justify-content: flex-start; padding-top: 4vh; overflow-y: auto; }
   }
-  .code-block-copy-btn:hover {
-    color: #e5e5e5;
-  }
-
-  .code-block-body {
-    background: #0b0c10 !important;
-    padding: 16px;
-    overflow-x: auto !important;
-  }
-
-  .code-block-pre {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: transparent !important;
-    border: none !important;
-  }
-
-  .code-block-code {
-    font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace !important;
-    font-size: 0.84rem !important;
-    line-height: 1.55 !important;
-    color: #abb2bf !important;
-    background: transparent !important;
-    padding: 0 !important;
-    border: none !important;
-    display: block;
-    white-space: pre !important;
-  }
-
-  /* Premium inline-code styling */
-  .inline-code {
-    background: rgba(45, 212, 191, 0.07);
-    border: 1px solid rgba(45, 212, 191, 0.12);
-    color: #2dd4bf;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
-    font-size: 0.85em;
-  }
-
-  /* Mobile responsiveness media queries */
   @media (max-width: 600px) {
-    .hide-mobile { display: none !important; }
-    .ch-toolbar {
-      flex-direction: column !important;
-      gap: 0.75rem !important;
-      align-items: stretch !important;
-      padding: 0.75rem 1rem !important;
+    .ch-messages { gap: 18px; padding: 14px 14px 10px; }
+    .hero { padding: 12px 6px 8px; }
+    .hero-title {
+      font-size: clamp(22px, 6.2vw, 28px);
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
     }
-    .ch-toolbar > div {
-      justify-content: space-between !important;
-      width: 100% !important;
-      gap: 0.5rem !important;
-      width: 100%;
+    .hero-sub { font-size: 14px; padding: 0 8px; }
+    .msg-user .bubble { max-width: 88%; font-size: 15px; padding: 10px 14px; }
+    .ch-ai-bubble { font-size: 16px; line-height: 1.62; }
+    .composer-wrap {
+      padding: 4px 10px max(10px, env(safe-area-inset-bottom));
     }
-    .ch-pill {
-      flex: 1 !important;
-      justify-content: center !important;
-      font-size: 0.78rem !important;
-      padding: 0.4rem 0.65rem !important;
+    .composer-box { padding: 11px 10px 8px 13px; border-radius: 16px; }
+    .composer-row { flex-wrap: wrap; gap: 6px; }
+    .composer-l { flex-wrap: wrap; gap: 4px; }
+    .pill-btn { height: 34px; padding: 0 8px; font-size: 13px; }
+    #model-label {
+      max-width: 44vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .ch-clear-btn, .ch-save-btn, .ch-new-btn {
-      flex: 1 !important;
-      justify-content: center !important;
-      font-size: 0.78rem !important;
-      padding: 0.4rem 0.65rem !important;
+    .composer-note { font-size: 11px; margin-top: 7px; padding: 0 4px; }
+    .char-count { display: none; }
+    .topbar-title { max-width: 40vw; }
+    .ch-menu {
+      min-width: 200px;
+      max-width: calc(100vw - 28px);
     }
-    #ch-messages {
-      padding: 1rem !important;
-      gap: 1rem !important;
-    }
-    .ch-ai-bubble {
-      padding: 0.8rem 0.9rem !important;
-      font-size: 0.85rem !important;
-    }
-    #input-box {
-      padding: 0.6rem 0.85rem !important;
-    }
-    #question-input {
-      font-size: 0.88rem !important;
-      min-height: 38px !important;
-    }
-    #subject-guide-note {
-      font-size: 0.7rem !important;
-      padding: 0.3rem 0.6rem !important;
+    #model-dd .ch-menu {
+      left: auto;
+      right: 0;
     }
   }
 </style>

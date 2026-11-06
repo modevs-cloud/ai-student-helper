@@ -1,331 +1,384 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
 {% block title %}My Profile — AI Student Helper{% endblock %}
 
-{% block content %}
+{% block page %}
 {% set history = history if history is defined else [] %}
 {% set total_questions = history|length %}
 
-<div class="pg-wrap">
+<div class="set-page">
+  <div class="set-inner">
 
-  <!-- Page header -->
-  <div class="pg-header">
-    <div>
-      <h1 class="pg-title">My Profile</h1>
-      <p class="pg-sub">Manage your account details and learning stats</p>
-    </div>
-    <a href="{{ url_for('logout') }}" class="prof-signout-btn" id="profile-signout-top">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sign Out
-    </a>
-  </div>
-
-  <!-- Flash messages -->
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      {% for message in messages %}
-        <div class="flash-msg" style="padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.88rem; font-weight: 500; margin-bottom: 1.25rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; text-align: left;">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  <!-- ── Top Row ── This section holds the avatar card and the stats card side-by-side -->
-  <div class="prof-top-grid">
-
-    <!-- Avatar card: Displays the user's profile picture or initial, their name, and email -->
-    <div class="prof-card prof-avatar-card">
-      <div class="prof-avatar-wrap">
-        <!-- Jinja2 logic: Check if the user has a Google profile picture -->
-        {% if user.picture %}
-          <img src="{{ user.picture }}" alt="{{ name }}" class="prof-avatar-img" referrerpolicy="no-referrer" />
-        {% else %}
-          <div class="prof-avatar-placeholder">{{ name[0]|upper if name else 'U' }}</div>
-        {% endif %}
-        <span class="prof-avatar-badge" aria-label="Account verified">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        </span>
-      </div>
-      <h2 class="prof-name">{{ name }}</h2>
-      <p class="prof-email">{{ user.email }}</p>
-      {% if user.picture %}
-      <div class="prof-google-badge">
-        <svg width="13" height="13" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Signed in with Google
-      </div>
-      {% else %}
-      <div class="prof-google-badge" style="background:#0d2a22; border-color:#1e3a2a; color:#2dd4bf;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="display:inline; margin-right:3px; vertical-align:middle;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Signed in with Email
-      </div>
-      {% endif %}
-
-      <div class="prof-meta-rows">
-        <div class="prof-meta-row">
-          <span class="prof-meta-label">Account status</span>
-          <span class="prof-meta-val prof-active">Active</span>
-        </div>
-      </div>
+    <div class="set-title-row">
+      <h1 class="set-title">Profile</h1>
+      <a href="{{ url_for('logout') }}" class="btn btn-danger" id="profile-signout-top">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </a>
     </div>
 
-    <!-- Stats card: Displays how many chats they've had, what subjects they asked about, etc. -->
-    <div class="prof-card prof-stats-card">
-      <div class="prof-section-header">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        <span>Learning Statistics</span>
-      </div>
+    <div class="set-layout">
 
-      <div class="prof-stat-grid" role="list" aria-label="Learning stats">
-        <div class="prof-stat-box" role="listitem">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <div class="prof-stat-num">{{ total_questions }}</div>
-          <div class="prof-stat-label">Total Chats</div>
-        </div>
-        <div class="prof-stat-box" role="listitem">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <div class="prof-stat-num">{{ total_questions }}</div>
-          <div class="prof-stat-label">Questions Asked</div>
-        </div>
-        <div class="prof-stat-box" role="listitem">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/></svg>
-          <div class="prof-stat-num">{{ history|map(attribute='subject')|list|unique|list|length }}</div>
-          <div class="prof-stat-label">Subjects Explored</div>
-        </div>
-        <div class="prof-stat-box" role="listitem">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <div class="prof-stat-num">{{ [total_questions, 7]|min }}</div>
-          <div class="prof-stat-label">Day Streak</div>
-        </div>
-      </div>
+      <!-- Section tabs (left) -->
+      <nav class="set-tabs" role="tablist" aria-label="Profile sections">
+        <button type="button" class="set-tab" role="tab" id="tab-overview"  data-tab="overview"  aria-selected="true">Overview</button>
+        <button type="button" class="set-tab" role="tab" id="tab-account"   data-tab="account"   aria-selected="false">Account Details</button>
+        <button type="button" class="set-tab" role="tab" id="tab-stats"     data-tab="stats"     aria-selected="false">Learning Stats</button>
+        <button type="button" class="set-tab" role="tab" id="tab-activity"  data-tab="activity"  aria-selected="false">Recent Activity</button>
+      </nav>
 
-      <!-- Subject breakdown: Shows a progress bar for each subject based on how often they ask about it -->
-      {% if history %}
-      <div class="prof-breakdown">
-        <div class="prof-breakdown-title">SUBJECT BREAKDOWN</div>
-        {% set subjects_all = history|map(attribute='subject')|list %}
-        {% for subj in ['Math','Science','English','History','Computer Science'] %}
-          {% set count = subjects_all|select('equalto', subj)|list|length %}
-          {% if count > 0 %}
-          {% set pct = ((count / total_questions) * 100)|round|int %}
-          <div class="prof-bar-row">
-            <span class="prof-bar-label">{{ subj|replace('Computer Science','CS') }}</span>
-            <div class="prof-bar-track">
-              <div class="prof-bar-fill" style="width:{{ pct }}%"></div>
-            </div>
-            <span class="prof-bar-pct">{{ pct }}%</span>
-          </div>
+      <!-- Panel (right) -->
+      <div class="set-panel">
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="flash-msg">{{ message }}</div>
+            {% endfor %}
           {% endif %}
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
+        {% endwith %}
 
-  </div>
-
-  <!-- ── Bottom Row ── -->
-  <div class="prof-bottom-grid">
-
-    <!-- Account details form: Lets the user edit their name -->
-    <div class="prof-card">
-      <div class="prof-section-header">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span>Account Details</span>
-      </div>
-
-      <form method="POST" action="{{ url_for('profile') }}" id="profile-form">
-        <div class="auth-field-group" style="margin-bottom:0.85rem;">
-          <label class="auth-label" for="prof-name">FULL NAME</label>
-          <div class="auth-input-wrap">
-            <input type="text" id="prof-name" name="first_name" value="{{ name }}" class="auth-input" style="padding-left:0.85rem;" autocomplete="name" readonly>
-            <span class="auth-eye-btn" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </span>
-          </div>
-        </div>
-
-        <div class="auth-field-group" style="margin-bottom:0.85rem;">
-          <label class="auth-label" for="prof-email">EMAIL ADDRESS</label>
-          <div class="auth-input-wrap">
-            <input type="email" id="prof-email" value="{{ user.email }}" class="auth-input" style="padding-left:0.85rem;" readonly disabled>
-            <span class="auth-eye-btn" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-            </span>
-          </div>
-        </div>
-
-        <div class="auth-field-group" style="margin-bottom:0.85rem;">
-          <label class="auth-label" for="prof-subject">PREFERRED SUBJECT</label>
-          <div class="auth-input-wrap">
-            <input type="text" id="prof-subject" value="{{ session.get('settings', {}).get('default_subject', 'Math') }}" class="auth-input" style="padding-left:0.85rem;" readonly disabled>
-            <span class="auth-eye-btn" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </span>
-          </div>
-        </div>
-
-        <div class="auth-field-group" style="margin-bottom:1.25rem;">
-          <label class="auth-label" for="prof-model">PREFERRED AI MODEL</label>
-          <div class="auth-input-wrap">
-            {% set pref_model = session.get('settings', {}).get('preferred_model', 'groq') %}
-            {% set pref_model_display = 'Groq Llama 3' %}
-            {% if pref_model == 'gemini' %}{% set pref_model_display = 'Gemini' %}{% endif %}
-            {% if pref_model == 'kimi' %}{% set pref_model_display = 'Kimi' %}{% endif %}
-            <input type="text" id="prof-model" value="{{ pref_model_display }}" class="auth-input" style="padding-left:0.85rem;" readonly disabled>
-            <span class="auth-eye-btn" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            </span>
-          </div>
-        </div>
-
-        <button type="button" class="prof-save-btn" id="profile-edit-btn">Edit Name</button>
-      </form>
-    </div>
-
-    <!-- Recent activity: Shows the 6 most recent questions they asked -->
-    <div class="prof-card">
-      <div class="prof-section-header">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Recent Activity</span>
-      </div>
-      <div class="prof-activity-list" role="list">
-        {% if history %}
-          {% for item in history[:6] %}
-          <div class="prof-activity-item" role="listitem">
-            <div class="prof-activity-icon">
-              {% if item.subject == 'Math' %}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              {% elif item.subject == 'Science' %}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10"/></svg>
-              {% elif item.subject == 'History' %}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg>
+        <!-- ── Overview ── Identity, auth provider, quick summary, and sign out -->
+        <section class="set-section" data-tab="overview" role="tabpanel" aria-labelledby="tab-overview">
+          <div class="prof-hero">
+            <div class="prof-avatar-wrap">
+              {% if user.picture %}
+                <img src="{{ user.picture }}" alt="{{ name }}" class="prof-avatar-img" referrerpolicy="no-referrer" />
               {% else %}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <div class="prof-avatar-placeholder">{{ name[0]|upper if name else 'U' }}</div>
               {% endif %}
+              <span class="prof-avatar-badge" aria-label="Account verified">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
             </div>
-            <div class="prof-activity-text">
-              <div class="prof-activity-q">{{ item.question[:45] }}{% if item.question|length > 45 %}...{% endif %}</div>
-              <div class="prof-activity-meta">{{ item.subject }} · {{ item.model }}</div>
+
+            <div class="prof-hero-info">
+              <h2 class="prof-name">{{ name }}</h2>
+              <p class="prof-email">{{ user.email }}</p>
+              <div class="prof-badges">
+                {% if user.picture %}
+                <span class="prof-provider-badge">
+                  <svg width="13" height="13" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                  Signed in with Google
+                </span>
+                {% else %}
+                <span class="prof-provider-badge">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:13px;height:13px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Signed in with Email
+                </span>
+                {% endif %}
+                <span class="badge badge-primary">ACTIVE</span>
+              </div>
             </div>
-            <div class="prof-activity-time">{{ item.time.split(' ')[0:2]|join(' ') if item.time else '' }}</div>
           </div>
-          {% endfor %}
-        {% else %}
-          <div style="text-align:center; padding:2rem; color:#555; font-size:0.85rem;">No activity yet — start chatting!</div>
-        {% endif %}
+
+          <div class="prof-stat-grid" role="list" aria-label="Learning stats summary">
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ total_questions }}</div>
+              <div class="prof-stat-label">Total Chats</div>
+            </div>
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ total_questions }}</div>
+              <div class="prof-stat-label">Questions Asked</div>
+            </div>
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ history|map(attribute='subject')|list|unique|list|length }}</div>
+              <div class="prof-stat-label">Subjects Explored</div>
+            </div>
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ [total_questions, 7]|min }}</div>
+              <div class="prof-stat-label">Day Streak</div>
+            </div>
+          </div>
+
+          <div class="set-row">
+            <div class="row-text">
+              <div class="row-label">Account status</div>
+              <div class="row-desc">Your study history and preferences are synced across sessions</div>
+            </div>
+            <span class="prof-status-pill">Active</span>
+          </div>
+
+          <div class="set-row">
+            <div class="row-text">
+              <div class="row-label">Sign Out</div>
+              <div class="row-desc">You will be signed out of your account and redirected to the home page</div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn btn-danger" id="profile-signout-bottom">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sign Out
+            </a>
+          </div>
+        </section>
+
+        <!-- ── Account Details ── Edit name and view preferences -->
+        <section class="set-section" data-tab="account" role="tabpanel" aria-labelledby="tab-account" hidden>
+          <h2 class="set-h">Account Details</h2>
+          <p class="set-sub">View your account information and update how your name appears on the dashboard.</p>
+
+          <form method="POST" action="{{ url_for('profile') }}" id="profile-form">
+            <div class="set-two-col">
+              <div class="field">
+                <label class="field-label" for="prof-name">Full name</label>
+                <p class="field-hint">Shown in your dashboard greeting</p>
+                <input type="text" id="prof-name" name="first_name" value="{{ name }}" class="prof-input" autocomplete="name" readonly>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="prof-email">Email address</label>
+                <p class="field-hint">Linked to your login account</p>
+                <input type="email" id="prof-email" value="{{ user.email }}" class="prof-input" readonly disabled>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="prof-subject">Preferred subject</label>
+                <p class="field-hint">Change this anytime in Settings</p>
+                <input type="text" id="prof-subject" value="{{ session.get('settings', {}).get('default_subject', 'Math') }}" class="prof-input" readonly disabled>
+              </div>
+
+              <div class="field">
+                <label class="field-label" for="prof-model">Preferred AI model</label>
+                <p class="field-hint">Primary model for your answers</p>
+                {% set user_sett = session.get('settings', {}) %}
+                {% set pref_model = user_sett.get('preferred_model', 'groq') %}
+                {% set pref_model_display = 'Groq Llama 3' %}
+                {% if pref_model == 'gemini' %}{% set pref_model_display = 'Gemini' %}{% endif %}
+                {% if pref_model == 'kimi' %}{% set pref_model_display = 'Kimi' %}{% endif %}
+                {% if pref_model == 'custom' or (user_sett.get('use_custom_api') and (user_sett.get('custom_api_key_enc') or user_sett.get('custom_key_masked') or user_sett.get('custom_api_key'))) %}
+                  {% set c_prov = user_sett.get('custom_provider', 'claude')|upper if user_sett.get('custom_provider') == 'openai' else user_sett.get('custom_provider', 'claude')|capitalize %}
+                  {% set c_mod = user_sett.get('custom_model', 'Custom Model') %}
+                  {% set pref_model_display = c_prov ~ ' · ' ~ c_mod ~ ' (Your API Key)' %}
+                {% endif %}
+                <input type="text" id="prof-model" value="{{ pref_model_display }}" class="prof-input" readonly disabled>
+              </div>
+            </div>
+
+            <div class="prof-form-actions">
+              <a href="{{ url_for('settings') }}" class="btn">Manage Preferences</a>
+              <button type="button" class="btn btn-accent" id="profile-edit-btn">Edit Name</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- ── Learning Statistics ── Numbers + subject breakdown -->
+        <section class="set-section" data-tab="stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
+          <h2 class="set-h">Learning Statistics</h2>
+          <p class="set-sub">Your study activity and subject distribution across all conversations.</p>
+
+          <div class="prof-stat-grid" role="list" aria-label="Learning stats">
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ total_questions }}</div>
+              <div class="prof-stat-label">Total Chats</div>
+            </div>
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ total_questions }}</div>
+              <div class="prof-stat-label">Questions Asked</div>
+            </div>
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ history|map(attribute='subject')|list|unique|list|length }}</div>
+              <div class="prof-stat-label">Subjects Explored</div>
+            </div>
+            <div class="prof-stat-box" role="listitem">
+              <div class="prof-stat-num">{{ [total_questions, 7]|min }}</div>
+              <div class="prof-stat-label">Day Streak</div>
+            </div>
+          </div>
+
+          {% if history %}
+          <div class="prof-breakdown">
+            <div class="prof-breakdown-title">Subject breakdown</div>
+            {% set subjects_all = history|map(attribute='subject')|list %}
+            {% for subj in ['Math','Science','English','History','Computer Science','Other'] %}
+              {% set count = subjects_all|select('equalto', subj)|list|length %}
+              {% if count > 0 %}
+              {% set pct = ((count / total_questions) * 100)|round|int %}
+              <div class="prof-bar-row">
+                <span class="prof-bar-label">{{ subj|replace('Computer Science','CS') }}</span>
+                <div class="prof-bar-track">
+                  <div class="prof-bar-fill" style="width:{{ pct }}%"></div>
+                </div>
+                <span class="prof-bar-pct">{{ pct }}%</span>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="prof-empty">Ask a few questions in Chat to see your subject breakdown here.</div>
+          {% endif %}
+        </section>
+
+        <!-- ── Recent Activity ── Latest 6 questions -->
+        <section class="set-section" data-tab="activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
+          <div class="prof-sec-head">
+            <div>
+              <h2 class="set-h">Recent Activity</h2>
+              <p class="set-sub">Your latest questions across subjects.</p>
+            </div>
+            <a href="{{ url_for('history') }}" class="btn">View all history →</a>
+          </div>
+
+          <div class="prof-activity-list" role="list">
+            {% if history %}
+              {% for item in history[:6] %}
+              <a href="{{ url_for('dashboard', load_chat_id=item.chat_id) }}" class="prof-activity-item" role="listitem">
+                <div class="prof-activity-icon">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div class="prof-activity-text">
+                  <div class="prof-activity-q">{{ item.question[:70] }}{% if item.question|length > 70 %}…{% endif %}</div>
+                  <div class="prof-activity-meta">{{ item.subject }} · {{ item.model }}</div>
+                </div>
+                <div class="prof-activity-time">{{ item.time.split(' ')[0:2]|join(' ') if item.time else '' }}</div>
+              </a>
+              {% endfor %}
+            {% else %}
+              <div class="prof-empty">No activity yet — start chatting!</div>
+            {% endif %}
+          </div>
+        </section>
+
       </div>
     </div>
 
   </div>
-
-  <!-- Sign Out section: The red sign out button at the bottom -->
-  <div class="prof-card prof-signout-section">
-    <div style="display:flex; align-items:center; gap:0.75rem;">
-      <div style="width:36px; height:36px; background:#2a1515; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </div>
-      <div>
-        <div style="font-size:0.9rem; font-weight:600; color:#e5e5e5;">Sign Out</div>
-        <div style="font-size:0.78rem; color:#666;">You will be signed out of your account and redirected to the login page.</div>
-      </div>
-    </div>
-    <a href="{{ url_for('logout') }}" class="prof-signout-btn" id="profile-signout-bottom">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sign Out
-    </a>
-  </div>
-
 </div>
 
 <style>
-  .pg-wrap { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; font-family:'Inter',system-ui,sans-serif; color:#e5e5e5; }
-  .pg-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1.75rem; flex-wrap:wrap; gap:1rem; }
-  .pg-title { font-size:1.75rem; font-weight:800; color:#fff; margin:0 0 0.3rem; }
-  .pg-sub { font-size:0.85rem; color:#666; margin:0; }
+  .prof-hero {
+    display: flex; align-items: center; gap: 18px; padding-bottom: 22px;
+    border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .prof-avatar-wrap { position: relative; flex-shrink: 0; }
+  .prof-avatar-img, .prof-avatar-placeholder {
+    width: 68px; height: 68px; border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--border-strong);
+  }
+  .prof-avatar-placeholder {
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-serif); font-size: 28px; font-weight: 500;
+  }
+  .prof-avatar-badge {
+    position: absolute; bottom: 2px; right: 2px; width: 20px; height: 20px;
+    background: var(--accent); border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; border: 2px solid var(--bg-panel);
+  }
+  .prof-hero-info { min-width: 0; flex: 1; }
+  .prof-name { font-family: var(--font-serif); font-size: 24px; font-weight: 400; color: var(--text); margin: 0 0 2px; }
+  .prof-email { font-size: 13.5px; color: var(--text-3); margin: 0 0 10px; }
+  .prof-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .prof-provider-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+    color: var(--text-2); background: var(--bg); border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 10px;
+  }
+  .prof-badges .badge { margin-left: 0; }
 
-  .prof-signout-btn { display:inline-flex; align-items:center; gap:6px; background:#2a1515; color:#f87171; border:1px solid #3a1a1a; border-radius:8px; padding:0.55rem 1rem; font-size:0.85rem; font-weight:600; text-decoration:none; transition:all 0.18s; cursor:pointer; }
-  .prof-signout-btn:hover { background:#3a1a1a; }
-
-  .prof-top-grid { display:grid; grid-template-columns: 280px 1fr; gap:1rem; margin-bottom:1rem; }
-  .prof-bottom-grid { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem; }
-
-  .prof-card { background:#111; border:1px solid #1e1e1e; border-radius:14px; padding:1.5rem; }
-  .prof-signout-section { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-
-  .prof-avatar-card { text-align:center; }
-  .prof-avatar-wrap { position:relative; display:inline-block; margin-bottom:1rem; }
-  .prof-avatar-img { width:80px; height:80px; border-radius:50%; border:3px solid #2dd4bf; object-fit:cover; }
-  .prof-avatar-placeholder { width:80px; height:80px; border-radius:50%; background:#1a2a1e; border:3px solid #2dd4bf; display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800; color:#2dd4bf; }
-  .prof-avatar-badge { position:absolute; bottom:4px; right:4px; width:20px; height:20px; background:#2dd4bf; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #111; }
-  .prof-name { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 0.25rem; }
-  .prof-email { font-size:0.8rem; color:#666; margin:0 0 0.75rem; }
-  .prof-google-badge { display:inline-flex; align-items:center; gap:5px; font-size:0.75rem; color:#888; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:999px; padding:0.2rem 0.6rem; margin-bottom:1rem; }
-  .prof-meta-rows { text-align:left; display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem; border-top:1px solid #1e1e1e; padding-top:0.75rem; }
-  .prof-meta-row { display:flex; justify-content:space-between; font-size:0.8rem; }
-  .prof-meta-label { color:#666; }
-  .prof-meta-val { color:#e5e5e5; }
-  .prof-active { color:#4ade80; }
-
-  .prof-section-header { display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#e5e5e5; margin-bottom:1.25rem; }
-
-  .prof-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.75rem; margin-bottom:1.25rem; }
-  .prof-stat-box { background:#161616; border:1px solid #1e1e1e; border-radius:10px; padding:0.85rem 0.6rem; text-align:center; }
-  .prof-stat-num { font-size:1.4rem; font-weight:800; color:#fff; margin:0.3rem 0 0.2rem; }
-  .prof-stat-label { font-size:0.7rem; color:#666; line-height:1.3; }
-
-  .prof-breakdown { }
-  .prof-breakdown-title { font-size:0.68rem; font-weight:700; letter-spacing:0.08em; color:#555; margin-bottom:0.75rem; }
-  .prof-bar-row { display:grid; grid-template-columns:60px 1fr 35px; gap:0.6rem; align-items:center; margin-bottom:0.5rem; }
-  .prof-bar-label { font-size:0.78rem; color:#888; }
-  .prof-bar-track { background:#1a1a1a; border-radius:999px; height:6px; overflow:hidden; }
-  .prof-bar-fill { background:#2dd4bf; height:100%; border-radius:999px; }
-  .prof-bar-pct { font-size:0.75rem; color:#666; text-align:right; }
-
-  .prof-save-btn { display:flex; align-items:center; justify-content:center; width:100%; padding:0.75rem; background:#2dd4bf; color:#0a0a0a; border:none; border-radius:10px; font-size:0.9rem; font-weight:700; cursor:pointer; transition:background 0.18s; }
-  .prof-save-btn:hover { background:#22c5b0; }
-
-  .prof-activity-list { display:flex; flex-direction:column; gap:0.6rem; }
-  .prof-activity-item { display:flex; align-items:flex-start; gap:0.75rem; padding:0.65rem; background:#161616; border-radius:8px; }
-  .prof-activity-icon { width:30px; height:30px; background:#0d2a22; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .prof-activity-q { font-size:0.82rem; color:#e5e5e5; font-weight:500; }
-  .prof-activity-meta { font-size:0.74rem; color:#666; margin-top:2px; }
-  .prof-activity-time { font-size:0.73rem; color:#555; white-space:nowrap; margin-left:auto; flex-shrink:0; }
-
-  @media(max-width:700px) {
-    .prof-top-grid, .prof-bottom-grid { grid-template-columns:1fr; }
-    .prof-stat-grid { grid-template-columns:repeat(2,1fr); }
-    .prof-signout-section { flex-direction:column; align-items:flex-start; }
+  .prof-status-pill {
+    font-size: 12.5px; font-weight: 500; color: var(--success);
+    background: rgba(127, 194, 155, 0.12); border: 1px solid rgba(127, 194, 155, 0.35);
+    padding: 3px 10px; border-radius: 999px;
   }
 
-  /* Reuse auth input styles */
-  .auth-field-group { display:flex; flex-direction:column; gap:0.3rem; }
-  .auth-label { font-size:0.68rem; font-weight:700; letter-spacing:0.07em; color:#777; }
-  .auth-input-wrap { position:relative; display:flex; align-items:center; }
-  .auth-input { width:100%; background:#161616; border:1px solid #2a2a2a; border-radius:8px; padding:0.65rem 2.5rem 0.65rem; color:#e5e5e5; font-size:0.88rem; font-family:inherit; outline:none; }
-  .auth-input:disabled { opacity:0.6; cursor:not-allowed; }
-  .auth-eye-btn { position:absolute; right:10px; background:transparent; border:none; display:flex; }
+  .prof-stat-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px;
+  }
+  .prof-stat-box {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 12px; text-align: center;
+  }
+  .prof-stat-num {
+    font-family: var(--font-serif); font-size: 28px; font-weight: 400;
+    color: var(--text); line-height: 1.1; margin-bottom: 4px;
+  }
+  .prof-stat-label { font-size: 12px; color: var(--text-3); }
+
+  .prof-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: 9px; padding: 10px 12px; color: var(--text);
+    font-size: 14.5px; font-family: inherit; outline: none; margin-top: auto;
+    transition: border-color 0.15s;
+  }
+  .prof-input:focus { border-color: var(--accent); }
+  .prof-input:disabled { opacity: 0.6; cursor: not-allowed; }
+  .prof-input.is-editing { border-color: var(--accent); background: var(--bg-elev); }
+
+  .prof-form-actions {
+    display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border);
+  }
+
+  .prof-breakdown { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .prof-breakdown-title { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 12px; }
+  .prof-bar-row { display: grid; grid-template-columns: 76px 1fr 42px; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .prof-bar-label { font-size: 13.5px; color: var(--text-2); }
+  .prof-bar-track { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; height: 8px; overflow: hidden; }
+  .prof-bar-fill { background: var(--accent); height: 100%; border-radius: 999px; }
+  .prof-bar-pct { font-size: 12.5px; color: var(--text-3); text-align: right; }
+
+  .prof-sec-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .prof-activity-list { display: flex; flex-direction: column; gap: 8px; }
+  .prof-activity-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .prof-activity-item:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+  .prof-activity-icon {
+    width: 32px; height: 32px; border-radius: 8px; background: var(--accent-soft);
+    color: var(--accent); display: grid; place-items: center; flex-shrink: 0;
+  }
+  .prof-activity-text { min-width: 0; flex: 1; }
+  .prof-activity-q { font-size: 14px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prof-activity-meta { font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+  .prof-activity-time { font-size: 12px; color: var(--text-3); white-space: nowrap; flex-shrink: 0; }
+
+  .prof-empty { text-align: center; padding: 32px 16px; color: var(--text-3); font-size: 14px; }
+
+  @media (max-width: 760px) {
+    .prof-stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .set-two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .prof-form-actions {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    .prof-form-actions .btn {
+      width: 100%;
+      height: 40px;
+    }
+    .prof-activity-item {
+      flex-wrap: wrap;
+    }
+    .prof-activity-time {
+      width: 100%;
+      padding-left: 44px;
+      margin-top: -4px;
+    }
+  }
 </style>
 
 <script>
+  initTabs('ash.profileTab', 'overview');
+
   document.addEventListener('DOMContentLoaded', () => {
     const editBtn = document.getElementById('profile-edit-btn');
     const nameInput = document.getElementById('prof-name');
-    
+
     if (editBtn && nameInput) {
       editBtn.addEventListener('click', (e) => {
         if (nameInput.readOnly) {
           e.preventDefault(); // prevent form submission on the first click
-          
+
           // Unlock field
           nameInput.readOnly = false;
+          nameInput.classList.add('is-editing');
           nameInput.focus();
-          nameInput.style.borderColor = '#2dd4bf';
-          nameInput.style.background = '#1a1a1a';
-          
+
           // Update button label & action to submit on next click
           editBtn.textContent = 'Save Changes';
           editBtn.type = 'submit';
-          editBtn.style.background = '#4ade80';
-          editBtn.style.color = '#0a0a0a';
         }
       });
     }

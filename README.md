@@ -12,10 +12,11 @@ Students can sign in with Google, ask questions across subjects, and receive cle
 
 ##  Features
 
-- **No Passwords Needed:** Seamless Google OAuth 2.0 integration for quick access.
-- **Interactive Dashboard:** A chat-style interface where students ask questions on the left and receive AI answers on the right.
-- **Dual AI Models with Auto-Fallback:**
-  - **Groq API with Llama 3** — the primary model. Ultra-fast inference, great for quick answers.
+- **Flexible Authentication:** Seamless Google OAuth 2.0 one-click sign-in plus Email & Password registration with Werkzeug salted password hashing.
+- **Bring Your Own API Key (BYOK) Encrypted Vault:** Students can optionally connect their personal Anthropic Claude, Google Gemini, OpenAI, or Groq API keys in Settings — verified live against the provider, encrypted at rest in PostgreSQL (`PBKDF2-HMAC-SHA256` + `HMAC-SHA256`), and never exposed in browser cookies or DOM.
+- **Interactive Dashboard:** A warm, distraction-free chat workspace with KaTeX math rendering, code syntax blocks, subject & model selectors, and responsive PC/mobile navigation.
+- **Dual Built-in AI Models with Auto-Fallback:**
+  - **Groq API with Llama 3** — the primary built-in model. Ultra-fast inference, great for quick answers.
   - **Google Gemini API** — automatic silent fallback. If Groq hits a rate limit or is unavailable, Gemini takes over instantly with no error shown to the user.
 - **Smart Fallback Logic:** Groq is primary. If Groq fails for any reason, Gemini takes over automatically and silently — users never see an error.
 - **Keep-Alive System:** Client-side ping every 10 minutes ensures the Render server never sleeps, so the app is always instant-on.
@@ -55,23 +56,28 @@ Students can sign in with Google, ask questions across subjects, and receive cle
 
 ```text
 ai-student-helper/
-├── app.py                  # Main Flask app, routes, and database models
+├── app.py                  # Main Flask app, routes, BYOK vault, and database models
 ├── requirements.txt        # Python dependencies
 ├── Procfile                # Gunicorn start command for Render
 ├── static/
-│   ├── css/style.css       # Custom styling and theming
-│   └── js/main.js          # Frontend interactivity
+│   ├── css/app-shell.css   # Unified warm dark/light design system & app shell
+│   ├── css/style.css       # Legacy utility stylesheet
+│   ├── js/main.js          # Frontend interactivity & keep-alive ping
+│   └── thinking.lottie     # AI thinking indicator animation
 └── templates/
-    ├── base.html           # Master layout (navbar, footer)
-    ├── landing.html        # Public homepage
-    ├── signin.html         # Sign in page
-    ├── signup.html         # Sign up page
-    ├── setup.html          # First time name setup
+    ├── base.html           # Public/onboarding layout (navbar, mobile drawer, footer)
+    ├── app_base.html       # Authenticated workspace shell (collapsible sidebar, topbar)
+    ├── _auth_styles.html   # Shared styles for Sign In, Sign Up, and Setup
+    ├── landing.html        # Public homepage with live chat preview
+    ├── signin.html         # Sign in page (Google OAuth + Email/Password)
+    ├── signup.html         # Sign up page (Google OAuth + Email/Password)
+    ├── setup.html          # Two-step onboarding setup (name & favorite subject)
     ├── dashboard.html      # Main AI chat interface
-    ├── history.html        # Grouped conversation history
-    ├── profile.html        # User stats and account info
-    ├── settings.html       # Preferences and theme
-    └── about.html          # About the project
+    ├── history.html        # Grouped conversation history with search & subject filter
+    ├── profile.html        # User stats, subject breakdown, and account info
+    ├── settings.html       # Learning preferences, BYOK API Keys vault, and theme
+    ├── about.html          # About the project, models, and contact links
+    └── privacy.html        # Privacy Policy & Terms of Use
 ```
 
 ## 🗄️ Database Architecture

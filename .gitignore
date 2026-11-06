@@ -47,4 +47,8 @@ portfolio_template.zip
 # ─── Local tool configs ───────────────────────────────────────────────────────
 .mcp.json
 test_apis.py
+.agents/
+coverage*.json
+.coverage
+htmlcov/
 

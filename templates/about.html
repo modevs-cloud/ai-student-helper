@@ -1,152 +1,323 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
 {% block title %}About — AI Student Helper{% endblock %}
 
-{% block content %}
-<div class="about-page-wrap" style="background: #0b0f14; min-height: calc(100vh - 56px); padding: 4rem 1.5rem; font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif; color: #f3f4f6;">
-  <div class="container" style="max-width: 860px; margin: 0 auto;">
+{% block topbar_left %}
+  <span class="topbar-title">About</span>
+{% endblock %}
 
-    <!-- 1. Center Graduate Cap Logo Wrapper: Shows the main app logo -->
-    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem; margin-top: 1rem;">
-      <div style="width: 84px; height: 84px; background: #0d9488; border-radius: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(13, 148, 136, 0.25);">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-        </svg>
-      </div>
-    </div>
+{% block topbar_right %}
+  {% if user %}
+    <a href="{{ url_for('dashboard') }}" class="btn">← Back to Chat</a>
+  {% elif session.get('user') %}
+    <a href="{{ url_for('setup') }}" class="btn">← Back to Setup</a>
+  {% else %}
+    <a href="{{ url_for('signin') }}" class="btn">Sign In</a>
+    <a href="{{ url_for('landing') }}" class="btn btn-accent">← Home</a>
+  {% endif %}
+{% endblock %}
 
-    <!-- 2. Centered Page Title: Main heading of the page -->
-    <h1 style="font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 800; color: #ffffff; text-align: center; margin: 0 0 0.75rem; letter-spacing: -0.03em;">
-      AI Student Helper
-    </h1>
+{% block page %}
+<div class="set-page">
+  <div class="set-inner">
 
-    <!-- 3. Version Badge: Shows the current app version -->
-    <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
-      <span style="display: inline-flex; align-items: center; gap: 6px; padding: 0.35rem 1rem; border-radius: 9999px; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; background: rgba(45, 212, 191, 0.08); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.18);">
-        Version 1.0.0 <span style="color: #4b5563; margin: 0 2px;">•</span> <span style="display: inline-flex; align-items: center; gap: 4px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80;"></span> Stable</span>
+    <div class="set-title-row">
+      <h1 class="set-title">About</h1>
+      <span class="about-ver-pill">
+        <span class="about-ver-dot"></span>
+        Version 1.0.0 · Stable
       </span>
     </div>
 
-    <!-- 4. Subtitle Description -->
-    <p style="max-width: 640px; margin: 0 auto 2.5rem; text-align: center; color: #9ca3af; font-size: 1.05rem; line-height: 1.65; font-weight: 400;">
-      Your intelligent academic companion — powered by advanced AI to help you learn faster, understand deeper, and achieve more.
-    </p>
+    <div class="set-layout">
 
-    <!-- 5. Dual Button CTA Buttons: Links to GitHub and Contact email -->
-    <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 4rem; flex-wrap: wrap;">
-      <!-- View on GitHub -->
-      <a href="https://github.com" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 8px; padding: 0.75rem 1.5rem; background: #111827; border: 1px solid rgba(255, 255, 255, 0.08); color: #e5e7eb; border-radius: 10px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; text-decoration: none;" class="about-btn-github">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display: inline-block;">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/>
-        </svg>
-        View on GitHub
-      </a>
-      <!-- Contact Us -->
-      <a href="mailto:mohammadhu1058@gmail.com" style="display: inline-flex; align-items: center; gap: 8px; padding: 0.75rem 1.5rem; background: #0d9488; color: #ffffff; border-radius: 10px; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; text-decoration: none;" class="about-btn-contact">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block;">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-          <polyline points="22,6 12,13 2,6"/>
-        </svg>
-        Contact Us
-      </a>
-    </div>
+      <!-- ── Left vertical tab menu (matches Settings / Profile / History) ── -->
+      <nav class="set-tabs" role="tablist" aria-label="About sections">
+        <button type="button" class="set-tab" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Overview</button>
+        <button type="button" class="set-tab" role="tab" id="tab-features" data-tab="features" aria-selected="false">Key Features</button>
+        <button type="button" class="set-tab" role="tab" id="tab-models"   data-tab="models"   aria-selected="false">AI Models &amp; BYOK</button>
+        <button type="button" class="set-tab" role="tab" id="tab-contact"  data-tab="contact"  aria-selected="false">Links &amp; Contact</button>
+      </nav>
 
-    <!-- 6. About the App Card: A brief description of what the app is and how it helps students -->
-    <div style="background: rgba(17, 24, 39, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 2rem; margin-bottom: 2rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-        <div style="width: 32px; height: 32px; background: rgba(13, 148, 136, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #2dd4bf; flex-shrink: 0;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="16" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12.01" y2="8"/>
-          </svg>
-        </div>
-        <h2 style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin: 0;">About the App</h2>
+      <!-- ── Right content card ── -->
+      <div class="set-panel">
+
+        <!-- ── Overview ── -->
+        <section class="set-section" data-tab="overview" role="tabpanel" aria-labelledby="tab-overview">
+          <div class="about-hero">
+            <div class="about-logo" aria-hidden="true">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              </svg>
+            </div>
+            <div class="about-hero-text">
+              <h2 class="about-app-name">AI Student Helper</h2>
+              <p class="about-tagline">Your intelligent academic companion — powered by advanced AI to help you learn faster, understand deeper, and achieve more.</p>
+            </div>
+          </div>
+
+          <div class="about-prose">
+            <p>
+              <strong>AI Student Helper</strong> is a modern educational assistant built to support students across all academic subjects. Whether you're working through complex mathematics, drafting essays, analyzing historical events, or learning a new programming language — the assistant guides you step by step.
+            </p>
+            <p>
+              Powered by cutting-edge AI models including <strong>Groq Llama 3</strong> and <strong>Google Gemini</strong> — plus support for your own <strong>Claude</strong>, <strong>Gemini</strong>, <strong>OpenAI</strong>, or <strong>Groq</strong> API keys — the app delivers fast, accurate, and contextually tailored explanations for your learning style.
+            </p>
+            <p>
+              Built with a warm, distraction-free reading and writing workspace, AI Student Helper keeps the focus on what matters most: understanding concepts deeply and building confidence.
+            </p>
+          </div>
+
+          <div class="about-cta-row">
+            <a href="https://github.com/modevs-cloud/ai-student-helper" target="_blank" rel="noopener noreferrer" class="btn about-btn-gh">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/>
+              </svg>
+              View on GitHub
+            </a>
+            <a href="mailto:mohammadhu1058@gmail.com" class="btn btn-accent">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Contact Us
+            </a>
+            {% if not user %}
+            <a href="{{ url_for('setup') if session.get('user') else url_for('signup') }}" class="btn">
+              Try it — it's free!
+            </a>
+            {% endif %}
+          </div>
+        </section>
+
+        <!-- ── Key Features ── -->
+        <section class="set-section" data-tab="features" role="tabpanel" aria-labelledby="tab-features" hidden>
+          <h2 class="set-h">Key Features</h2>
+          <p class="set-sub">Built to help students study smarter across every subject.</p>
+
+          <div class="about-feat-grid">
+            <div class="about-feat-card">
+              <div class="about-feat-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <h3 class="about-feat-title">Lightning Fast</h3>
+              <p class="about-feat-desc">
+                Groq's high-speed Llama 3 inference and Google Gemini deliver step-by-step explanations with natural pacing, LaTeX math rendering, and syntax-highlighted code blocks.
+              </p>
+            </div>
+
+            <div class="about-feat-card">
+              <div class="about-feat-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+              </div>
+              <h3 class="about-feat-title">Multi-Subject AI</h3>
+              <p class="about-feat-desc">
+                Tailored prompts for Math, Science, English, History, Computer Science, and general coursework — complete with customizable Grade Level, Answer Length, and AI Tone.
+              </p>
+            </div>
+
+            <div class="about-feat-card">
+              <div class="about-feat-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+              </div>
+              <h3 class="about-feat-title">Persistent Chat History</h3>
+              <p class="about-feat-desc">
+                Your questions and step-by-step answers are saved to PostgreSQL so you can search, filter by subject, and revisit past study sessions from any device.
+              </p>
+            </div>
+
+            <div class="about-feat-card">
+              <div class="about-feat-ic">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+              </div>
+              <h3 class="about-feat-title">Bring Your Own API Key</h3>
+              <p class="about-feat-desc">
+                Want to use your own Anthropic Claude, Google Gemini, OpenAI GPT-4o, or Groq account? Connect your personal API key in Settings and pick the exact model you want.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── AI Models & BYOK ── -->
+        <section class="set-section" data-tab="models" role="tabpanel" aria-labelledby="tab-models" hidden>
+          <h2 class="set-h">Supported AI Providers &amp; Models</h2>
+          <p class="set-sub">Use the built-in free models out of the box, or connect your own API key in Settings.</p>
+
+          <div class="about-model-list">
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">Anthropic Claude <span class="badge">BYOK</span></div>
+                <div class="about-model-sub">Claude Sonnet 4, Claude 3.7 Sonnet, Claude 3.5 Haiku</div>
+              </div>
+              <span class="about-model-tag">Custom API Key</span>
+            </div>
+
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">Google Gemini <span class="badge">Built-in &amp; BYOK</span></div>
+                <div class="about-model-sub">Gemini 2.5 Flash, Gemini 2.5 Pro, Gemini 2.0 Flash, Gemini 2.0 Flash Lite</div>
+              </div>
+              <span class="about-model-tag">Built-in + Custom Key</span>
+            </div>
+
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">OpenAI <span class="badge">BYOK</span></div>
+                <div class="about-model-sub">GPT-4.1, GPT-4.1 mini, GPT-4o, GPT-4o mini, o3-mini</div>
+              </div>
+              <span class="about-model-tag">Custom API Key</span>
+            </div>
+
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">Groq Cloud <span class="badge">Built-in &amp; BYOK</span></div>
+                <div class="about-model-sub">Llama 3.3 70B Versatile, Llama 3.1 8B Instant, Gemma 2 9B</div>
+              </div>
+              <span class="about-model-tag">Built-in + Custom Key</span>
+            </div>
+          </div>
+
+          {% if user %}
+          <div class="about-cta-row" style="margin-top: 20px;">
+            <a href="{{ url_for('settings') }}" class="btn btn-accent" onclick="try{sessionStorage.setItem('ash.settingsTab','apikeys');}catch(e){}">
+              Configure Your API Key in Settings →
+            </a>
+          </div>
+          {% endif %}
+        </section>
+
+        <!-- ── Links & Contact ── -->
+        <section class="set-section" data-tab="contact" role="tabpanel" aria-labelledby="tab-contact" hidden>
+          <h2 class="set-h">Links &amp; Contact</h2>
+          <p class="set-sub">Have feedback, questions, or ideas for AI Student Helper? Reach out anytime.</p>
+
+          <div class="about-model-list">
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">Developer Contact</div>
+                <div class="about-model-sub">mohammadhu1058@gmail.com</div>
+              </div>
+              <a href="mailto:mohammadhu1058@gmail.com" class="btn btn-accent">Send Email</a>
+            </div>
+
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">Source Code &amp; Documentation</div>
+                <div class="about-model-sub">Explore the Flask + PostgreSQL architecture on GitHub</div>
+              </div>
+              <a href="https://github.com/modevs-cloud/ai-student-helper" target="_blank" rel="noopener noreferrer" class="btn">View on GitHub ↗</a>
+            </div>
+
+            <div class="about-model-row">
+              <div>
+                <div class="about-model-name">Privacy Policy &amp; Terms of Use</div>
+                <div class="about-model-sub">Read how your study data, Google OAuth login, and API keys are protected</div>
+              </div>
+              <a href="{{ url_for('privacy') if user else url_for('privacy', **{'from': 'public'}) }}" class="btn">Read Privacy Policy →</a>
+            </div>
+          </div>
+        </section>
+
       </div>
-
-      <p style="font-size: 0.94rem; color: #9ca3af; line-height: 1.75; margin-bottom: 1.25rem; font-weight: 400;">
-        AI Student Helper is a modern educational assistant built to support students across all academic subjects. Whether you're struggling with complex mathematics, writing essays, understanding historical events, or learning a new programming language — our AI is here to guide you every step of the way.
-      </p>
-      <p style="font-size: 0.94rem; color: #9ca3af; line-height: 1.75; margin-bottom: 1.25rem; font-weight: 400;">
-        Powered by cutting-edge AI models including Groq Llama 3 and Google Gemini, the app delivers fast, accurate, and contextually relevant answers tailored to your learning needs. Every response is designed to not just answer your question, but help you truly understand the concept.
-      </p>
-      <p style="font-size: 0.94rem; color: #9ca3af; line-height: 1.75; margin: 0; font-weight: 400;">
-        Built with simplicity and focus in mind, AI Student Helper keeps distractions to a minimum so you can concentrate on what matters most — learning and growing.
-      </p>
     </div>
-
-    <!-- 7. Grid Column Features (Lightning Fast, Multi-Subject AI, Chat History) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
-      <!-- Card 1: Lightning Fast -->
-      <div style="background: rgba(17, 24, 39, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 1.75rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; flex-direction: column; gap: 1rem;">
-        <div style="width: 38px; height: 38px; background: rgba(13, 148, 136, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #2dd4bf;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-          </svg>
-        </div>
-        <div>
-          <h3 style="font-size: 1rem; font-weight: 700; color: #ffffff; margin: 0 0 0.5rem;">Lightning Fast</h3>
-          <p style="font-size: 0.85rem; color: #9ca3af; line-height: 1.6; margin: 0; font-weight: 400;">
-            AI Student Helper is incredibly fast. Groq's high-speed Llama 3 answers your questions in fractions of a second so you never have to wait.
-          </p>
-        </div>
-      </div>
-
-      <!-- Card 2: Multi-Subject AI -->
-      <div style="background: rgba(17, 24, 39, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 1.75rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; flex-direction: column; gap: 1rem;">
-        <div style="width: 38px; height: 38px; background: rgba(13, 148, 136, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #2dd4bf;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="2" x2="12" y2="22"/>
-            <line x1="2" y1="12" x2="22" y2="12"/>
-          </svg>
-        </div>
-        <div>
-          <h3 style="font-size: 1rem; font-weight: 700; color: #ffffff; margin: 0 0 0.5rem;">Multi-Subject AI</h3>
-          <p style="font-size: 0.85rem; color: #9ca3af; line-height: 1.6; margin: 0; font-weight: 400;">
-            Struggling with Math? Science? Computer Science? History? English? Our advanced AI has been trained on all academic subjects.
-          </p>
-        </div>
-      </div>
-
-      <!-- Card 3: Chat History -->
-      <div style="background: rgba(17, 24, 39, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 1.75rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; flex-direction: column; gap: 1rem;">
-        <div style="width: 38px; height: 38px; background: rgba(13, 148, 136, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #2dd4bf;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-        </div>
-        <div>
-          <h3 style="font-size: 1rem; font-weight: 700; color: #ffffff; margin: 0 0 0.5rem;">Chat History</h3>
-          <p style="font-size: 0.85rem; color: #9ca3af; line-height: 1.6; margin: 0; font-weight: 400;">
-            Your questions and the AI's step-by-step answers are automatically saved to your private History page so you can study them anytime.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- CTA for visitors not logged in: If the user is a guest, show a button to go back to landing page -->
-    <!-- Jinja2 logic: Check if there is NO user logged in -->
-    {% if not user %}
-    <div style="text-align: center; margin-top: 3.5rem;">
-      <a href="{{ url_for('landing') }}#login-card" style="display: inline-flex; align-items: center; gap: 8px; padding: 0.9rem 2.5rem; background: #0d9488; color: #ffffff; border-radius: 9999px; font-weight: 700; font-size: 1.05rem; transition: all 0.25s; text-decoration: none; box-shadow: 0 4px 20px rgba(13, 148, 136, 0.4);" onmouseover="this.style.background='#0f766e'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='#0d9488'; this.style.transform='translateY(0px)';">
-        🚀 Try it — it's free!
-      </a>
-    </div>
-    {% endif %}
 
   </div>
 </div>
 
 <style>
-  .about-btn-github:hover {
-    background: #1f2937 !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
-    color: #ffffff !important;
+  .about-ver-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 500;
+    color: var(--text-2); background: var(--bg-panel); border: 1px solid var(--border);
   }
-  .about-btn-contact:hover {
-    background: #0f766e !important;
+  .about-ver-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+    box-shadow: 0 0 6px var(--success);
+  }
+  .about-hero {
+    display: flex; align-items: center; gap: 16px; padding-bottom: 20px;
+    margin-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+  .about-logo {
+    width: 60px; height: 60px; border-radius: 16px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(217, 119, 87, 0.35);
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .about-app-name {
+    font-family: var(--font-serif); font-size: 24px; font-weight: 400;
+    color: var(--text); margin: 0 0 4px;
+  }
+  .about-tagline {
+    font-size: 13.5px; color: var(--text-3); margin: 0; line-height: 1.5;
+  }
+  .about-prose p {
+    font-size: 14.5px; color: var(--text-2); line-height: 1.75; margin: 0 0 14px;
+  }
+  .about-prose strong { color: var(--text); font-weight: 500; }
+  .about-cta-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border);
+  }
+  .about-feat-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  }
+  .about-feat-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .about-feat-ic {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center;
+  }
+  .about-feat-title {
+    font-size: 15px; font-weight: 600; color: var(--text); margin: 0;
+  }
+  .about-feat-desc {
+    font-size: 13.5px; color: var(--text-3); line-height: 1.6; margin: 0;
+  }
+  .about-model-list {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .about-model-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 14px 16px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; flex-wrap: wrap;
+  }
+  .about-model-name {
+    font-size: 14.5px; font-weight: 500; color: var(--text);
+  }
+  .about-model-sub {
+    font-size: 13px; color: var(--text-3); margin-top: 3px;
+  }
+  .about-model-tag {
+    font-size: 12px; color: var(--text-2); background: var(--bg-panel);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px;
+  }
+  @media (max-width: 720px) {
+    .about-feat-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .about-hero {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .about-cta-row .btn {
+      flex: 1 1 100%;
+      justify-content: center;
+      height: 40px;
+    }
+    .about-model-row .btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
 </style>
+
+<script>
+  initTabs('ash.aboutTab', 'overview');
+</script>
 {% endblock %}

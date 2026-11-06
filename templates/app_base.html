@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ session.get('settings', {}).get('theme', 'dark') }}"
+  data-fontsize="{{ session.get('settings', {}).get('font_size', 'medium') }}"
+  data-compact="{{ 'true' if session.get('settings', {}).get('compact_messages') else 'false' }}">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AI Student Helper{% endblock %}</title>
+  <meta name="description" content="AI Student Helper — instant AI-powered homework help on any subject." />
+  <meta name="author" content="Mohammad" />
+
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97757' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 10v6M2 10l10-5 10 5-10 5z'/><path d='M6 12v5c3 3 9 3 12 0v-5'/></svg>" />
+
+  <!-- Fonts: Inter for the interface, Newsreader (serif) for headings and AI answers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" />
+
+  <!-- Restore the saved sidebar state before first paint so the layout doesn't jump -->
+  <script>
+    try { if (localStorage.getItem('ash.sidebar') === 'collapsed') document.documentElement.classList.add('side-collapsed'); } catch (e) { }
+
+    // Shared tab switcher for Settings / Profile / History / About.
+    // Defined in <head> so inline scripts inside the page block can call it immediately.
+    window.initTabs = function initTabs(storageKey, fallback, onChange) {
+      function setup() {
+        var tabs = Array.prototype.slice.call(document.querySelectorAll('.set-tab'));
+        var sections = Array.prototype.slice.call(document.querySelectorAll('.set-section'));
+        if (!tabs.length) return;
+        function show(name) {
+          if (!tabs.some(function (t) { return t.dataset.tab === name; })) name = fallback;
+          tabs.forEach(function (t) {
+            var active = t.dataset.tab === name;
+            t.setAttribute('aria-selected', String(active));
+            t.classList.toggle('is-active', active);
+          });
+          sections.forEach(function (s) {
+            var match = s.dataset.tab === name;
+            s.hidden = !match;
+            s.style.display = match ? 'block' : 'none';
+          });
+          if (onChange) onChange(name);
+          try { sessionStorage.setItem(storageKey, name); } catch (e) { }
+        }
+        tabs.forEach(function (t) {
+          t.addEventListener('click', function (e) {
+            e.preventDefault();
+            show(t.dataset.tab);
+          });
+        });
+        var start = fallback;
+        try { start = sessionStorage.getItem(storageKey) || fallback; } catch (e) { }
+        show(start);
+        window.switchSetTab = show;
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+      } else {
+        setup();
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app-shell.css') }}?v=20261106" />
+  {% block head %}{% endblock %}
+</head>
+
+<body class="app-body">
+  {% set display_name = session.get('display_name') or (user.name if user else '') or 'You' %}
+  {% set recents = sidebar_recents(8) %}
+
+  <div class="app" id="app">
+
+    {% if user %}
+    <!-- ══ Sidebar (Only shown when logged in & onboarded) ══ -->
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="side-head">
+        <a href="{{ url_for('dashboard') }}" class="side-brand" aria-label="AI Student Helper home">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+            <path d="M6 12v5c3 3 9 3 12 0v-5" />
+          </svg>
+          <span>AI Student Helper</span>
+        </a>
+        <button type="button" class="icon-btn" id="side-toggle" aria-label="Collapse or expand sidebar"
+          title="Toggle sidebar">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <path d="M9 4v16" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="side-scroll">
+        <a href="{{ url_for('dashboard', new_chat=1) }}" class="side-new" id="new-chat-btn" title="Start new chat"
+          onclick="return confirm('Start a new chat session? Your past history will be saved in the History page.')">
+          <span class="side-new-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg></span>
+          <span class="side-label">Start new chat</span>
+        </a>
+
+        <nav aria-label="App pages">
+          <a href="{{ url_for('dashboard') }}" id="nav-dashboard"
+            class="side-link {% if request.endpoint == 'dashboard' %}active{% endif %}" title="Chat">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span class="side-label">Chat</span>
+          </a>
+          <a href="{{ url_for('history') }}" id="nav-history"
+            class="side-link {% if request.endpoint == 'history' %}active{% endif %}" title="History">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <polyline points="12 7 12 12 15.5 14" />
+            </svg>
+            <span class="side-label">History</span>
+          </a>
+          <a href="{{ url_for('profile') }}" id="nav-profile"
+            class="side-link {% if request.endpoint == 'profile' %}active{% endif %}" title="Profile">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <span class="side-label">Profile</span>
+          </a>
+          <a href="{{ url_for('settings') }}" id="nav-settings"
+            class="side-link {% if request.endpoint == 'settings' %}active{% endif %}" title="Settings">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg>
+            <span class="side-label">Settings</span>
+          </a>
+          <a href="{{ url_for('about') }}" id="nav-about"
+            class="side-link {% if request.endpoint == 'about' %}active{% endif %}" title="About">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <line x1="12" y1="11" x2="12" y2="16" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <span class="side-label">About</span>
+          </a>
+          <a href="{{ url_for('privacy') }}" id="nav-privacy"
+            class="side-link {% if request.endpoint == 'privacy' %}active{% endif %}" title="Privacy Policy">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span class="side-label">Privacy Policy</span>
+          </a>
+        </nav>
+
+        <div class="side-recents">
+          <div class="side-sec"><span>Recents</span></div>
+          {% if recents %}
+          {% for c in recents %}
+          <a href="{{ url_for('dashboard', load_chat_id=c.chat_id) }}"
+            class="recent-item {% if active_chat_id and c.chat_id == active_chat_id and request.endpoint == 'dashboard' %}active{% endif %}"
+            title="{{ c.title }}">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span class="recent-title">{{ c.title }}</span>
+          </a>
+          {% endfor %}
+          <a href="{{ url_for('history') }}" class="recent-all">View all →</a>
+          {% else %}
+          <div class="recent-empty">Your chats will show up here.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="side-foot">
+        <div class="user-menu" id="user-menu" role="menu" hidden>
+          <a href="{{ url_for('profile') }}" role="menuitem">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>Profile
+          </a>
+          <a href="{{ url_for('settings') }}" role="menuitem">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg>Settings
+          </a>
+          <hr />
+          <a href="{{ url_for('logout') }}" id="side-logout" role="menuitem">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>Sign out
+          </a>
+        </div>
+        <button type="button" class="user-btn" id="user-btn" aria-haspopup="true" aria-expanded="false"
+          aria-controls="user-menu">
+          {% if user and user.picture %}
+          <img class="avatar" src="{{ user.picture }}" alt="" referrerpolicy="no-referrer" />
+          {% else %}
+          <div class="avatar avatar-fallback" aria-hidden="true">{{ display_name[0]|upper }}</div>
+          {% endif %}
+          <div class="user-meta">
+            <div class="user-name">{{ display_name }}</div>
+            {% if user and user.email %}<div class="user-mail">{{ user.email }}</div>{% endif %}
+          </div>
+          <svg class="ic user-chev" viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;">
+            <polyline points="7 15 12 20 17 15" />
+            <polyline points="7 9 12 4 17 9" />
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <div class="scrim" id="scrim"></div>
+    {% endif %}
+
+    <!-- ══ Main column ══ -->
+    <div class="main-col">
+      <header class="topbar">
+        <div class="topbar-l">
+          {% if user %}
+          <button type="button" class="icon-btn" id="side-open" aria-label="Open navigation menu" title="Menu">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
+            </svg>
+          </button>
+          {% else %}
+          <a href="{{ url_for('landing') }}" class="side-brand" style="text-decoration:none; margin-right:10px;"
+            aria-label="AI Student Helper home">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--accent);">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
+            <span>AI Student Helper</span>
+          </a>
+          {% endif %}
+          {% block topbar_left %}{% endblock %}
+        </div>
+        <div class="topbar-r">
+          {% block topbar_right %}{% endblock %}
+        </div>
+      </header>
+
+      {% block page %}{% endblock %}
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var app = document.getElementById('app');
+      var mobile = window.matchMedia('(max-width: 860px)');
+
+      // Collapse / expand the sidebar (remembered between visits)
+      var sideToggle = document.getElementById('side-toggle');
+      if (sideToggle) {
+        sideToggle.addEventListener('click', function () {
+          if (mobile.matches) { app.classList.remove('drawer-open'); return; }
+          var collapsed = root.classList.toggle('side-collapsed');
+          try { localStorage.setItem('ash.sidebar', collapsed ? 'collapsed' : 'expanded'); } catch (e) { }
+        });
+      }
+
+      // Mobile drawer
+      var sideOpen = document.getElementById('side-open');
+      var scrim = document.getElementById('scrim');
+      if (sideOpen) sideOpen.addEventListener('click', function () { app.classList.add('drawer-open'); });
+      if (scrim) scrim.addEventListener('click', function () { app.classList.remove('drawer-open'); });
+
+      // Account menu
+      var btn = document.getElementById('user-btn');
+      var menu = document.getElementById('user-menu');
+      if (btn && menu) {
+        function closeMenu() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = menu.hidden;
+          menu.hidden = !open;
+          btn.setAttribute('aria-expanded', String(open));
+        });
+        document.addEventListener('click', function (e) { if (!menu.contains(e.target)) closeMenu(); });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') { closeMenu(); app.classList.remove('drawer-open'); }
+        });
+      }
+    })();
+  </script>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+
+</html>

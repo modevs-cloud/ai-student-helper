@@ -1,162 +1,555 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="{{ session.get('settings', {}).get('theme', 'dark') }}">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
   <!-- SEO -->
   <title>{% block title %}AI Student Helper{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}AI Student Helper — instant AI-powered homework help on any subject.{% endblock %}" />
+  <meta name="description"
+    content="{% block meta_description %}AI Student Helper — instant AI-powered homework help on any subject.{% endblock %}" />
   <meta name="author" content="Mohammad" />
 
   <!-- Open Graph -->
-  <meta property="og:title"       content="AI Student Helper" />
+  <meta property="og:title" content="AI Student Helper" />
   <meta property="og:description" content="Instant AI tutoring on any subject. Free & student-friendly." />
-  <meta property="og:type"        content="website" />
+  <meta property="og:type" content="website" />
 
   <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97757' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 10v6M2 10l10-5 10 5-10 5z'/><path d='M6 12v5c3 3 9 3 12 0v-5'/></svg>" />
 
-  <!-- Fonts -->
+  <!-- Fonts: Inter for UI, Newsreader (serif) for headings -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app-shell.css') }}?v=20261107" />
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.6.2/dist/dotlottie-wc.js" type="module"></script>
+
+  <style>
+    /* ── Standard Cross-Browser CSS Reset (WebKit / Chromium parity) ── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-serif: 'Newsreader', 'Source Serif 4', Georgia, serif;
+      --font-mono: 'Fira Code', 'SFMono-Regular', Consolas, Menlo, monospace;
+      --bg-user-msg: var(--user-bg, #141413);
+      --shadow-card: 0 14px 40px rgba(0, 0, 0, 0.28);
+    }
+
+    html {
+      height: auto !important;
+      min-height: 100%;
+      margin: 0;
+      padding: 0;
+      font-size: 16px !important;
+      line-height: 1.5;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body.public-shell {
+      height: auto !important;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    header,
+    nav,
+    main,
+    section,
+    footer,
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+      padding: 0;
+    }
+
+    .pub-navbar {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      height: 60px;
+      min-height: 60px;
+      max-height: 60px;
+      margin: 0;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 1100;
+    }
+
+    .pub-nav-inner {
+      max-width: 1240px;
+      width: 100%;
+      margin: 0 auto;
+      height: 60px;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      line-height: 1;
+    }
+
+    .pub-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      height: 36px;
+      margin: 0;
+      padding: 0;
+      line-height: 1;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .pub-brand-spark {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .pub-brand-text {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: -0.015em;
+      color: var(--text);
+      font-optical-sizing: none;
+    }
+
+    .pub-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 36px;
+      margin: 0;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .pub-nav-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 15px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1;
+      color: var(--text-2);
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .pub-nav-link:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+
+    .pub-nav-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 18px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+
+    .pub-nav-cta:hover {
+      background: var(--accent-hover);
+      color: #fff;
+    }
+
+    #main-content {
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: stretch;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .pub-footer {
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      padding: 22px 36px;
+      font-size: 14px;
+      color: var(--text-3);
+    }
+
+    .pub-footer-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .pub-footer-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-serif);
+      font-size: 15px;
+      color: var(--text-2);
+    }
+
+    .pub-footer-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pub-footer-links a {
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .pub-footer-links a:hover {
+      color: var(--text);
+    }
+
+
+    /* ── Mobile Hamburger Button & Slide-down Drawer ── */
+    .pub-hamburger {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elev);
+      color: var(--text);
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pub-hamburger:hover {
+      background: var(--bg-hover);
+    }
+    .pub-hamburger .ic-close {
+      display: none;
+    }
+    .pub-hamburger[aria-expanded="true"] .ic-menu {
+      display: none;
+    }
+    .pub-hamburger[aria-expanded="true"] .ic-close {
+      display: block;
+      color: var(--accent);
+    }
+
+    .pub-mobile-scrim {
+      display: none;
+      position: fixed;
+      inset: 0;
+      top: 56px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: 1080;
+    }
+    .pub-mobile-scrim.is-open {
+      display: block;
+    }
+
+    .pub-mobile-menu {
+      display: none;
+      position: fixed;
+      top: 56px;
+      left: 0;
+      right: 0;
+      background: var(--bg-elev);
+      border-bottom: 1px solid var(--border-strong);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+      padding: 14px 16px 18px;
+      z-index: 1090;
+      flex-direction: column;
+      gap: 6px;
+      animation: pubMenuSlide 0.18s ease-out;
+    }
+    .pub-mobile-menu.is-open {
+      display: flex;
+    }
+    @keyframes pubMenuSlide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .pub-mobile-link {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .pub-mobile-link:hover {
+      background: var(--bg-hover);
+    }
+    .pub-mobile-link svg {
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .pub-mobile-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 6px 4px;
+    }
+    .pub-mobile-cta-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .pub-mobile-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--border-strong);
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.15s;
+    }
+    .pub-mobile-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    @media (max-width: 680px) {
+      .pub-navbar {
+        height: 56px;
+      }
+
+      .pub-nav-inner {
+        padding: 0 16px;
+      }
+
+
+      .pub-brand-text {
+        font-size: 19px;
+      }
+
+      .pub-nav-links {
+        display: none;
+      }
+
+      .pub-hamburger {
+        display: inline-flex;
+      }
+
+
+      .pub-footer {
+        padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+      }
+
+      .pub-footer-inner {
+        flex-direction: column;
+        text-align: center;
+        justify-content: center;
+        gap: 8px;
+      }
+    }
+  </style>
 
   {% block head %}{% endblock %}
 </head>
-<body>
 
-  <!-- ── Navbar ── This is the menu bar at the top of every page -->
-  <header class="navbar" role="banner" style="background:#0d0d0d; border-bottom:1px solid #1e1e1e; padding:0; height:56px; position:sticky; top:0; z-index:1100;">
-    <div style="max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:100%; padding:0 1.5rem;">
+<body class="public-shell">
 
-      <!-- Brand -->
-      <a href="{{ url_for('landing') }}" class="nav-brand" aria-label="AI Student Helper home" style="display:flex; align-items:center; gap:8px; text-decoration:none; flex-shrink:0;">
-        <div style="width:32px; height:32px; background:#161f1a; border:1px solid #1e3a2a; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-        </div>
-        <span class="nav-brand-text" style="font-size:0.95rem; font-weight:700; color:#fff;">AI Student Helper</span>
+  <!-- ── Top Header Bar ── -->
+  <header class="pub-navbar" role="banner">
+    <div class="pub-nav-inner">
+
+      <!-- Brand with Terracotta Orange Graduation Cap -->
+      <a href="{{ url_for('landing') }}" class="pub-brand" aria-label="AI Student Helper home">
+        <span class="pub-brand-spark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97757" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+            <path d="M6 12v5c3 3 9 3 12 0v-5" />
+          </svg>
+        </span>
+        <span class="pub-brand-text">AI Student Helper</span>
       </a>
 
-      <!-- Jinja2 logic: If the user is logged in, show the Dashboard, History, Profile links -->
-      {% if user %}
-        <!-- ── Authenticated nav ── -->
-        <nav class="desktop-nav" role="navigation" aria-label="App navigation">
-          <a href="{{ url_for('dashboard') }}" id="nav-dashboard" style="display:flex; align-items:center; gap:6px; padding:0.5rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:500; text-decoration:none; transition:all 0.15s; {% if request.endpoint == 'dashboard' %}background:#1a2a1e; color:#2dd4bf;{% else %}color:#888;{% endif %}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Chat
-          </a>
-          <a href="{{ url_for('history') }}" id="nav-history" style="display:flex; align-items:center; gap:6px; padding:0.5rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:500; text-decoration:none; transition:all 0.15s; {% if request.endpoint == 'history' %}background:#1a2a1e; color:#2dd4bf;{% else %}color:#888;{% endif %}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            History
-          </a>
-          <a href="{{ url_for('profile') }}" id="nav-profile" style="display:flex; align-items:center; gap:6px; padding:0.5rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:500; text-decoration:none; transition:all 0.15s; {% if request.endpoint == 'profile' %}background:#1a2a1e; color:#2dd4bf;{% else %}color:#888;{% endif %}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Profile
-          </a>
-          <a href="{{ url_for('settings') }}" id="nav-settings" style="display:flex; align-items:center; gap:6px; padding:0.5rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:500; text-decoration:none; transition:all 0.15s; {% if request.endpoint == 'settings' %}background:#1a2a1e; color:#2dd4bf;{% else %}color:#888;{% endif %}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            Settings
-          </a>
-          <a href="{{ url_for('about') }}" id="nav-about" style="display:flex; align-items:center; gap:6px; padding:0.5rem 0.85rem; border-radius:8px; font-size:0.85rem; font-weight:500; text-decoration:none; transition:all 0.15s; {% if request.endpoint == 'about' %}background:#1a2a1e; color:#2dd4bf;{% else %}color:#888;{% endif %}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            About
-          </a>
-        </nav>
-
-        <!-- Avatar & Hamburger Actions -->
-        <div class="nav-actions">
-          {% if user.picture %}
-            <a href="{{ url_for('profile') }}" aria-label="View profile" style="display:flex; align-items:center;">
-              <img src="{{ user.picture }}" alt="{{ user.name }}" class="nav-avatar" referrerpolicy="no-referrer" />
-            </a>
-          {% else %}
-            <a href="{{ url_for('profile') }}" aria-label="View profile" style="text-decoration:none;">
-              <div class="nav-avatar-fallback">
-                {{ session.get('display_name', 'U')[0]|upper }}
-              </div>
-            </a>
-          {% endif %}
-
-          <button class="hamburger" id="hamburger-btn" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        </div>
-
-      <!-- Jinja2 logic: If the user is NOT logged in, show the About link and Sign In buttons -->
+      {% if request.endpoint == 'setup' %}
+      <div class="pub-nav-links">
+        <a href="{{ url_for('about', **{'from': 'public'}) }}" id="nav-about" class="pub-nav-link">About</a>
+        <a href="{{ url_for('privacy', **{'from': 'public'}) }}" id="nav-privacy" class="pub-nav-link">Privacy</a>
+        <a href="{{ url_for('logout') }}" id="nav-logout-btn" class="pub-nav-link">Sign Out</a>
+      </div>
       {% else %}
-        <!-- ── Public nav ── -->
-        <nav class="desktop-nav public-nav" role="navigation" aria-label="Primary navigation">
-          <a href="{{ url_for('about') }}" id="nav-about" style="font-size:0.85rem; color:#888; text-decoration:none;">About</a>
-        </nav>
-        <div class="nav-actions public-actions">
-          <a href="{{ url_for('signin') }}" id="nav-signin-btn" class="nav-signin-btn">Sign In</a>
-          <a href="{{ url_for('signup') }}" id="nav-signup-btn" class="nav-signup-btn">Get Started</a>
-
-          <button class="hamburger" id="hamburger-btn" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        </div>
+      <div class="pub-nav-links">
+        <a href="{{ url_for('about', **{'from': 'public'}) }}" id="nav-about" class="pub-nav-link">About</a>
+        <a href="{{ url_for('privacy', **{'from': 'public'}) }}" id="nav-privacy" class="pub-nav-link">Privacy</a>
+        <a href="{{ url_for('signin') }}" id="nav-signin-btn" class="pub-nav-link">Sign In</a>
+        <a href="{{ url_for('signup') }}" id="nav-signup-btn" class="pub-nav-cta">Get Started</a>
+      </div>
       {% endif %}
+
+      <!-- Hamburger button (mobile only) -->
+      <button type="button" class="pub-hamburger" id="pub-hamburger-btn" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="pub-mobile-menu">
+        <svg class="ic-menu" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="4" y1="7" x2="20" y2="7"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="17" x2="20" y2="17"/>
+        </svg>
+        <svg class="ic-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
 
     </div>
   </header>
 
+  <!-- ── Mobile Hamburger Drawer (mobile only) ── -->
+  <div class="pub-mobile-scrim" id="pub-mobile-scrim"></div>
+  <nav class="pub-mobile-menu" id="pub-mobile-menu" aria-label="Mobile navigation">
+    <a href="{{ url_for('landing') }}" class="pub-mobile-link">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </a>
+    <a href="{{ url_for('about', **{'from': 'public'}) }}" class="pub-mobile-link">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      About AI Student Helper
+    </a>
+    <a href="{{ url_for('privacy', **{'from': 'public'}) }}" class="pub-mobile-link">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Privacy Policy &amp; Terms
+    </a>
+    <div class="pub-mobile-divider"></div>
+    {% if request.endpoint == 'setup' %}
+    <div class="pub-mobile-cta-row">
+      <a href="{{ url_for('logout') }}" class="pub-mobile-btn">Sign Out</a>
+    </div>
+    {% else %}
+    <div class="pub-mobile-cta-row">
+      <a href="/login/google" class="pub-mobile-btn">
+        <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Continue with Google
+      </a>
+      <a href="{{ url_for('signin') }}" class="pub-mobile-btn">Sign In with Email</a>
+      <a href="{{ url_for('signup') }}" class="pub-mobile-btn primary">Get Started — Free</a>
+    </div>
+    {% endif %}
+  </nav>
 
-  <!-- ── Mobile drawer ── This is the menu that slides out on phone screens -->
-  <div id="mobile-menu" class="mobile-menu" role="dialog" aria-modal="true" aria-label="Mobile navigation">
-    <nav aria-label="Mobile navigation links">
-      <ul style="list-style:none; display:flex; flex-direction:column; align-items:center; gap:1.5rem;">
-        {% if user %}
-          <li><a href="{{ url_for('dashboard') }}" class="mobile-nav-link" id="mob-dashboard">Dashboard</a></li>
-          <li><a href="{{ url_for('history') }}"   class="mobile-nav-link" id="mob-history">History</a></li>
-          <li><a href="{{ url_for('profile') }}"   class="mobile-nav-link" id="mob-profile">Profile</a></li>
-          <li><a href="{{ url_for('settings') }}"  class="mobile-nav-link" id="mob-settings">Settings</a></li>
-          <li><a href="{{ url_for('about') }}"     class="mobile-nav-link" id="mob-about">About</a></li>
-          <li><a href="{{ url_for('logout') }}"    class="btn btn-ghost"   id="mob-logout" style="font-size:1rem;">Sign Out</a></li>
-        {% else %}
-          <li><a href="#features"     class="mobile-nav-link" id="mob-features">Features</a></li>
-          <li><a href="#how-it-works" class="mobile-nav-link" id="mob-how">How it works</a></li>
-          <li><a href="#subjects"     class="mobile-nav-link" id="mob-subjects">Subjects</a></li>
-          <li><a href="{{ url_for('about') }}"        class="mobile-nav-link" id="mob-about">About</a></li>
-          <li><a href="#login-card" class="btn btn-primary" id="mob-signin" style="font-size:1rem; padding:0.9rem 2rem;">🚀 Sign In Free</a></li>
-        {% endif %}
-      </ul>
-    </nav>
-    <p style="margin-top:2rem; font-size:0.82rem; color:var(--txt-muted);">🎓 AI Student Helper · Built by Mohammad</p>
-  </div>
-
-  <!-- ── Page content ── This is where the specific page content (like dashboard or profile) gets injected -->
+  <!-- ── Page content ── -->
   <main id="main-content">
     {% block content %}{% endblock %}
   </main>
 
-  <!-- ── Footer ── The tiny bar at the very bottom of the page -->
-  <footer class="footer" role="contentinfo">
-    <div class="container">
-      <div class="footer-inner">
-        <div class="footer-brand" style="display:flex; align-items:center; gap:8px;">
-          <div style="width:24px; height:24px; background:#161f1a; border:1px solid #1e3a2a; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2.5" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-          </div>
-          <span style="font-size:0.9rem; font-weight:700; color:#fff;">AI Student Helper</span>
-        </div>
-        <span class="footer-copy">Built by Mohammad · 2026 · First Project 🚀</span>
-        <nav class="footer-links" aria-label="Footer navigation">
-          <a href="{{ url_for('about') }}"   class="footer-link" id="footer-about">About</a>
-          <a href="{{ url_for('landing') }}" class="footer-link" id="footer-home">Home</a>
-          {% if user %}<a href="{{ url_for('logout') }}" class="footer-link" id="footer-logout">Sign Out</a>{% endif %}
-        </nav>
+  <!-- ── Footer ── -->
+  <footer class="pub-footer" role="contentinfo">
+    <div class="pub-footer-inner">
+      <div class="pub-footer-brand">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97757" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+          <path d="M6 12v5c3 3 9 3 12 0v-5" />
+        </svg>
+        <span>AI Student Helper</span>
       </div>
+      <span>Built by Mohammad · AI Study Companion</span>
+      <nav class="pub-footer-links" aria-label="Footer navigation">
+        <a href="{{ url_for('about', **{'from': 'public'}) }}" id="footer-about">About</a>
+        <a href="{{ url_for('privacy', **{'from': 'public'}) }}" id="footer-privacy">Privacy Policy</a>
+        <a href="{{ url_for('landing') }}" id="footer-home">Home</a>
+        {% if user or session.get('user') %}<a href="{{ url_for('logout') }}" id="footer-logout">Sign Out</a>{% endif %}
+      </nav>
     </div>
   </footer>
 
+  <script>
+    (function () {
+      var btn = document.getElementById('pub-hamburger-btn');
+      var menu = document.getElementById('pub-mobile-menu');
+      var scrim = document.getElementById('pub-mobile-scrim');
+      if (!btn || !menu || !scrim) return;
+      function setOpen(open) {
+        btn.setAttribute('aria-expanded', String(open));
+        menu.classList.toggle('is-open', open);
+        scrim.classList.toggle('is-open', open);
+      }
+      btn.addEventListener('click', function () {
+        var isOpen = btn.getAttribute('aria-expanded') === 'true';
+        setOpen(!isOpen);
+      });
+      scrim.addEventListener('click', function () { setOpen(false); });
+      menu.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () { setOpen(false); });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') setOpen(false);
+      });
+    })();
+  </script>
   <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 
 </body>
+
 </html>

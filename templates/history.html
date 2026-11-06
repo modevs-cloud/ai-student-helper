@@ -1,101 +1,93 @@
-{% extends "base.html" %}
+{% extends "app_base.html" %}
 {% block title %}Chat History — AI Student Helper{% endblock %}
 
-{% block content %}
-<div class="pg-wrap">
+{% block page %}
+<div class="set-page">
+  <div class="set-inner">
 
-  <!-- Page header -->
-  <div class="pg-header">
-    <div>
-      <h1 class="pg-title">Chat History</h1>
-      <p class="pg-sub">Browse and reopen your past conversations</p>
-    </div>
-    <div class="pg-header-right">
+    <div class="set-title-row">
+      <h1 class="set-title">History</h1>
       <div class="chat-count-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:14px;height:14px;"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
         {{ history|length }} chats
       </div>
     </div>
-  </div>
 
-  <!-- Search & filter row: Lets the user type to find a specific chat -->
-  <div class="hist-controls">
-    <div class="hist-search-wrap">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" id="hist-search" class="hist-search-input" placeholder="Search conversations..." aria-label="Search conversation history">
-    </div>
-  </div>
+    <div class="set-layout">
 
-  <!-- Subject filter chips: Buttons to show only Math chats, Science chats, etc. -->
-  <div class="hist-filter-chips" role="group" aria-label="Filter by subject">
-    <button class="hist-chip active" data-filter="all" id="filter-all">All</button>
-    <button class="hist-chip" data-filter="Math" id="filter-math">Mathematics</button>
-    <button class="hist-chip" data-filter="Science" id="filter-science">Science</button>
-    <button class="hist-chip" data-filter="History" id="filter-history">History</button>
-    <button class="hist-chip" data-filter="English" id="filter-english">English</button>
-    <button class="hist-chip" data-filter="Computer Science" id="filter-cs">Computer Science</button>
-    <button class="hist-chip" data-filter="Other" id="filter-other">Other</button>
-  </div>
+      <!-- Subject filter tabs (left) — matches Settings / Profile sidebar -->
+      <nav class="set-tabs hist-filter-chips" role="group" aria-label="Filter by subject">
+        <button type="button" class="set-tab hist-chip active" data-filter="all"              aria-selected="true"  id="filter-all">All Subjects</button>
+        <button type="button" class="set-tab hist-chip"        data-filter="Math"             aria-selected="false" id="filter-math">Mathematics</button>
+        <button type="button" class="set-tab hist-chip"        data-filter="Science"          aria-selected="false" id="filter-science">Science</button>
+        <button type="button" class="set-tab hist-chip"        data-filter="Computer Science" aria-selected="false" id="filter-cs">Computer Science</button>
+        <button type="button" class="set-tab hist-chip"        data-filter="History"          aria-selected="false" id="filter-history">History</button>
+        <button type="button" class="set-tab hist-chip"        data-filter="English"          aria-selected="false" id="filter-english">English</button>
+        <button type="button" class="set-tab hist-chip"        data-filter="Other"            aria-selected="false" id="filter-other">Other</button>
+      </nav>
 
-  <!-- History list: This is where we display the actual chat cards -->
-  <div class="hist-list" id="hist-list" role="list">
-    <!-- Jinja2 logic: Check if the 'history' list from app.py has anything in it -->
-    {% if history %}
-      <!-- Jinja2 loop: For every chat in the history list, we create a card -->
-      {% for item in history %}
-      <article class="hist-card" role="listitem" data-subject="{{ item.subject }}" data-question="{{ item.question|lower }}" onclick="window.location.href='{{ url_for('dashboard', load_chat_id=item.chat_id) }}'" style="cursor: pointer;">
-        
-        <div class="hist-card-meta">
-          <div class="hist-subject-chip hist-chip-{{ item.subject|replace(' ','_')|lower }}">
-            {% if item.subject == 'Math' %}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {% elif item.subject == 'Science' %}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4"/><path d="M3 9v10a2 2 0 0 0 2 2h14a2 2 0 0 1-2-2V9M3 9h18"/></svg>
-            {% elif item.subject == 'History' %}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            {% elif item.subject == 'English' %}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>
-            {% else %}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
-            {% endif %}
-            {{ item.subject }}
-          </div>
-          <span class="hist-meta-sep">·</span>
-          <span class="hist-time">{{ item.time }}</span>
-          <span class="hist-meta-sep">·</span>
-          <span class="hist-model">{{ item.model }}</span>
-        </div>
+      <!-- Panel (right) -->
+      <div class="set-panel">
 
-        <h3 class="hist-question-title">{{ item.question[:80] }}{% if item.question|length > 80 %}...{% endif %}</h3>
-
-        <div class="hist-qa-row">
-          <div class="hist-qa-col">
-            <div class="hist-qa-label">YOUR QUESTION</div>
-            <p class="hist-qa-text">{{ item.question[:120] }}{% if item.question|length > 120 %}...{% endif %}</p>
-          </div>
-          <div class="hist-qa-divider"></div>
-          <div class="hist-qa-col">
-            <div class="hist-qa-label">AI ANSWER</div>
-            <p class="hist-qa-text">{{ item.answer[:120] }}{% if item.answer|length > 120 %}...{% endif %}</p>
+        <div class="hist-head">
+          <div>
+            <h2 class="set-h">Past Conversations</h2>
+            <p class="set-sub">Browse, filter, and reopen any of your previous study sessions.</p>
           </div>
         </div>
 
-      </article>
-      {% endfor %}
-    {% else %}
-      <!-- If the history list is empty, we show this placeholder message -->
-      <div class="hist-empty" role="status">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" stroke-width="1.5" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <h3>No conversations yet</h3>
-        <p>Start asking questions on the <a href="{{ url_for('dashboard') }}" style="color:#2dd4bf;">Chat page</a> and they'll appear here.</p>
+        <!-- Search row -->
+        <div class="hist-controls">
+          <div class="hist-search-wrap">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="hist-search" class="hist-search-input" placeholder="Search conversations..." aria-label="Search conversation history">
+          </div>
+        </div>
+
+        <!-- History list -->
+        <div class="hist-list" id="hist-list" role="list">
+          {% if history %}
+            {% for item in history %}
+            <article class="hist-card" role="listitem" data-subject="{{ item.subject }}" data-question="{{ item.question|lower }}" onclick="window.location.href='{{ url_for('dashboard', load_chat_id=item.chat_id) }}'">
+              <div class="hist-card-meta">
+                <span class="hist-subject-chip">{{ item.subject }}</span>
+                <span class="hist-meta-sep">·</span>
+                <span class="hist-time">{{ item.time }}</span>
+                <span class="hist-meta-sep">·</span>
+                <span class="hist-model">{{ item.model }}</span>
+              </div>
+
+              <h3 class="hist-question-title">{{ item.question[:90] }}{% if item.question|length > 90 %}…{% endif %}</h3>
+
+              <div class="hist-qa-row">
+                <div class="hist-qa-col">
+                  <div class="hist-qa-label">Your question</div>
+                  <p class="hist-qa-text">{{ item.question[:130] }}{% if item.question|length > 130 %}…{% endif %}</p>
+                </div>
+                <div class="hist-qa-divider"></div>
+                <div class="hist-qa-col">
+                  <div class="hist-qa-label">AI answer</div>
+                  <p class="hist-qa-text">{{ item.answer[:130] }}{% if item.answer|length > 130 %}…{% endif %}</p>
+                </div>
+              </div>
+            </article>
+            {% endfor %}
+          {% else %}
+            <div class="hist-empty" role="status">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:36px;height:36px;color:var(--text-3);"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <h3>No conversations yet</h3>
+              <p>Start asking questions on the <a href="{{ url_for('dashboard') }}" style="color:var(--accent);text-decoration:underline;">Chat page</a> and they'll appear here.</p>
+            </div>
+          {% endif %}
+        </div>
+
       </div>
-    {% endif %}
-  </div>
+    </div>
 
+  </div>
 </div>
 
 <script>
-  // Search filter
   const searchInput = document.getElementById('hist-search');
   const cards = document.querySelectorAll('.hist-card');
 
@@ -115,70 +107,68 @@
 
   document.querySelectorAll('.hist-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      document.querySelectorAll('.hist-chip').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.hist-chip').forEach(c => {
+        c.classList.remove('active');
+        c.setAttribute('aria-selected', 'false');
+      });
       chip.classList.add('active');
+      chip.setAttribute('aria-selected', 'true');
       filterCards();
     });
   });
 </script>
 
 <style>
-  .pg-wrap { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; font-family: 'Inter', system-ui, sans-serif; color: #e5e5e5; }
-  .pg-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.75rem; }
-  .pg-title { font-size: 1.75rem; font-weight: 800; color: #fff; margin: 0 0 0.3rem; }
-  .pg-sub { font-size: 0.85rem; color: #666; margin: 0; }
-  .pg-header-right { display: flex; align-items: center; gap: 0.75rem; }
-  .chat-count-badge { display:flex; align-items:center; gap:6px; background:#161616; border:1px solid #2a2a2a; border-radius:8px; padding:0.45rem 0.85rem; font-size:0.8rem; color:#888; }
+  .chat-count-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-panel); border: 1px solid var(--border-strong);
+    border-radius: 9px; padding: 6px 12px; font-size: 13px; color: var(--text-2);
+  }
 
-  .hist-controls { margin-bottom: 1rem; }
-  .hist-search-wrap { position: relative; display: flex; align-items: center; max-width: 460px; }
-  .hist-search-wrap svg { position: absolute; left: 12px; color: #555; }
-  .hist-search-input { width: 100%; background: #111; border: 1px solid #222; border-radius: 10px; padding: 0.65rem 0.75rem 0.65rem 2.4rem; color: #e5e5e5; font-size: 0.88rem; outline: none; transition: border-color 0.18s; }
-  .hist-search-input:focus { border-color: #2dd4bf44; }
-  .hist-search-input::placeholder { color: #444; }
+  .hist-controls { margin-bottom: 18px; }
+  .hist-search-wrap { position: relative; display: flex; align-items: center; }
+  .hist-search-wrap svg { position: absolute; left: 12px; color: var(--text-3); pointer-events: none; }
+  .hist-search-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: 10px; padding: 10px 12px 10px 36px; color: var(--text);
+    font-size: 14.5px; font-family: inherit; outline: none; transition: border-color 0.15s;
+  }
+  .hist-search-input:focus { border-color: var(--accent); }
+  .hist-search-input::placeholder { color: var(--text-3); }
 
-  .hist-filter-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
-  .hist-chip { background: #111; border: 1px solid #222; border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.8rem; color: #777; cursor: pointer; transition: all 0.15s; }
-  .hist-chip:hover { border-color: #444; color: #ccc; }
-  .hist-chip.active { background: #2dd4bf15; border-color: #2dd4bf44; color: #2dd4bf; }
+  .hist-list { display: flex; flex-direction: column; gap: 12px; }
+  .hist-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  }
+  .hist-card:hover { border-color: var(--border-strong); background: var(--bg-hover); }
 
-  .hist-list { display: flex; flex-direction: column; gap: 0.75rem; }
-  .hist-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 1.25rem; transition: border-color 0.18s; }
-  .hist-card:hover { border-color: #2a2a2a; }
+  .hist-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hist-subject-chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px;
+    border-radius: 999px; font-size: 11.5px; font-weight: 500;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(217, 119, 87, 0.3);
+  }
+  .hist-meta-sep { color: var(--text-3); font-size: 12px; }
+  .hist-time, .hist-model { font-size: 12.5px; color: var(--text-3); }
 
-  .hist-card-meta { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
-  .hist-subject-chip { display:inline-flex; align-items:center; gap:5px; padding:0.2rem 0.6rem; border-radius:999px; font-size:0.72rem; font-weight:600; }
-  .hist-chip-math { background:#2dd4bf15; color:#2dd4bf; }
-  .hist-chip_math { background:#2dd4bf15; color:#2dd4bf; }
-  .hist-chip_science { background:#4ade8015; color:#4ade80; }
-  .hist-chip_history { background:#f59e0b15; color:#f59e0b; }
-  .hist-chip_english { background:#a78bfa15; color:#a78bfa; }
-  .hist-chip_computer_science { background:#60a5fa15; color:#60a5fa; }
-  .hist-chip_other { background:#9ca3af15; color:#9ca3af; }
-  .hist-meta-sep { color: #333; font-size: 0.8rem; }
-  .hist-time, .hist-model { font-size: 0.78rem; color: #555; }
+  .hist-question-title {
+    font-family: var(--font-serif); font-size: 18px; font-weight: 400;
+    color: var(--text); margin: 0 0 12px; line-height: 1.35;
+  }
 
-  .hist-question-title { font-size: 0.95rem; font-weight: 600; color: #e5e5e5; margin: 0 0 0.85rem; }
+  .hist-qa-row { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .hist-qa-divider { background: var(--border); width: 1px; }
+  .hist-qa-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+  .hist-qa-text { font-size: 13px; color: var(--text-2); line-height: 1.5; margin: 0; }
 
-  .hist-qa-row { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 1rem; }
-  .hist-qa-divider { background: #1e1e1e; width: 1px; }
-  .hist-qa-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: #555; margin-bottom: 0.4rem; }
-  .hist-qa-text { font-size: 0.82rem; color: #888; line-height: 1.5; margin: 0; }
+  .hist-empty { text-align: center; padding: 48px 16px; color: var(--text-3); }
+  .hist-empty h3 { font-family: var(--font-serif); font-weight: 400; margin: 12px 0 6px; color: var(--text); font-size: 20px; }
+  .hist-empty p { font-size: 14px; margin: 0; }
 
-  .hist-empty { text-align:center; padding:4rem 1rem; color:#555; }
-  .hist-empty h3 { margin: 1rem 0 0.5rem; color: #666; font-size: 1.1rem; }
-  .hist-empty p { font-size:0.9rem; margin:0; }
-
-  /* Mobile responsiveness media queries */
   @media (max-width: 600px) {
-    .hist-qa-row {
-      grid-template-columns: 1fr !important;
-      gap: 0.75rem !important;
-    }
-    .hist-qa-divider {
-      height: 1px !important;
-      width: 100% !important;
-    }
+    .hist-qa-row { grid-template-columns: 1fr; gap: 10px; }
+    .hist-qa-divider { height: 1px; width: 100%; }
   }
 </style>
 {% endblock %}

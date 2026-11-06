@@ -7,11 +7,11 @@
   <!-- Logo -->
   <div class="auth-logo">
     <div class="auth-logo-icon" aria-hidden="true">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <dotlottie-wc src="{{ url_for('static', filename='thinking.lottie') }}?v=2" autoplay loop style="width: 34px; height: 34px; display: inline-block;"></dotlottie-wc>
     </div>
-    <span class="auth-logo-text">AI Student Helper</span>
+    <span class="auth-logo-text">Welcome back</span>
   </div>
-  <p class="auth-tagline">Your AI-powered study companion</p>
+  <p class="auth-tagline">Sign in to continue studying with AI Student Helper</p>
 
   <!-- Card -->
   <div class="auth-card" role="main">
@@ -38,12 +38,10 @@
       <div class="auth-divider"><span>or sign in with email</span></div>
 
       <!-- Flash Messages section -->
-      <!-- Jinja2 logic: 'with messages' grabs any error or success messages we sent from app.py -->
       {% with messages = get_flashed_messages() %}
         {% if messages %}
-          <!-- Jinja2 loop: If there are messages, we loop through them and show each one in a red box -->
           {% for message in messages %}
-            <div class="flash-msg" style="padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.25rem; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; text-align: left;">
+            <div class="flash-msg auth-flash">
               {{ message }}
             </div>
           {% endfor %}
@@ -53,18 +51,16 @@
       <!-- Standard Email/Password Sign-in Form -->
       <form class="auth-form" id="signin-form" method="POST" action="{{ url_for('signin') }}">
 
-        <!-- Email Field: This collects the user's email address -->
         <div class="auth-field-group">
-          <label class="auth-label" for="signin-email">EMAIL ADDRESS</label>
+          <label class="auth-label" for="signin-email">Email Address</label>
           <div class="auth-input-wrap">
             <svg class="auth-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
             <input type="email" id="signin-email" name="email" placeholder="you@example.com" class="auth-input" autocomplete="email">
           </div>
         </div>
 
-        <!-- Password Field: This collects their password, with an eye button to unhide it -->
         <div class="auth-field-group">
-          <label class="auth-label" for="signin-password">PASSWORD</label>
+          <label class="auth-label" for="signin-password">Password</label>
           <div class="auth-input-wrap">
             <svg class="auth-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>
             <input type="password" id="signin-password" name="password" placeholder="Enter your password" class="auth-input" autocomplete="current-password">
@@ -73,13 +69,13 @@
             </button>
           </div>
           <div style="text-align:right; margin-top: 6px;">
-            <a href="/login/google" class="auth-link" id="signin-forgot">Forgot password?</a>
+            <a href="/login/google" class="auth-link" id="signin-forgot" style="font-size: 13px;">Forgot password?</a>
           </div>
         </div>
 
         <button type="submit" class="auth-submit-btn" id="signin-submit-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Sign In
+          Continue with email
         </button>
 
         <p class="auth-switch-text">
@@ -98,17 +94,17 @@
 
   <div class="auth-trust-row" role="list">
     <div class="auth-trust-item" role="listitem">
-      <svg width="12" height="12" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg width="12" height="12" fill="none" stroke="#d97757" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
       Free to use
     </div>
-    <div class="auth-trust-sep" aria-hidden="true">|</div>
+    <div class="auth-trust-sep" aria-hidden="true">·</div>
     <div class="auth-trust-item" role="listitem">
-      <svg width="12" height="12" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg width="12" height="12" fill="none" stroke="#d97757" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
       Instant AI access
     </div>
-    <div class="auth-trust-sep" aria-hidden="true">|</div>
+    <div class="auth-trust-sep" aria-hidden="true">·</div>
     <div class="auth-trust-item" role="listitem">
-      <svg width="12" height="12" fill="none" stroke="#4ade80" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg width="12" height="12" fill="none" stroke="#d97757" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
       Secure &amp; private
     </div>
   </div>

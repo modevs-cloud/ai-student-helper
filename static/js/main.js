@@ -38,12 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const setTheme = (theme) => {
       document.documentElement.setAttribute('data-theme', theme);
       toggleBtn.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
-      toggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      toggleBtn.textContent = theme === 'dark' ? 'Light' : 'Dark';
     };
 
     // Init icon based on current theme
     const current = document.documentElement.getAttribute('data-theme') || 'dark';
-    toggleBtn.textContent = current === 'dark' ? '☀️' : '🌙';
+    toggleBtn.textContent = current === 'dark' ? 'Light' : 'Dark';
     toggleBtn.setAttribute('aria-label', `Switch to ${current === 'dark' ? 'light' : 'dark'} mode`);
 
     toggleBtn.addEventListener('click', () => {

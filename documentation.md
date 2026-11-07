@@ -1,23 +1,30 @@
-This application is for my resume to show-case my skills
+This application is for my resume to showcase my full-stack software engineering skills.
 
-         AI Student Helper—Project Documentation:
+# AI Student Helper — Project Documentation
 
-What This App Does It is a web-based application, which assists students to have immediate AI-based assistance on whatever they are studying. The student logs into Google, writes his/her name only once and thereafter can pose any question and the app's AI will respond with a direct and clear simple answer. It is rather similar to a personal tutor who is available on demand, regardless of the device.
+## What This App Does
+AI Student Helper is a full-stack web application that gives students instant, step-by-step AI academic explanations across subjects (Math, Science, Computer Science, History, English, and Other). Students can sign in with Google OAuth 2.0 or register with a permanent email and password (`pbkdf2:sha256` hashed). The platform includes built-in AI models (Groq and Google Gemini with automatic model discovery, caching, and silent fallback) as well as a Bring Your Own Key (BYOK) encrypted API key vault supporting Anthropic Claude, Google Gemini, OpenAI, and Groq.
 
-Pages Landing Page - It is the front door of the app and the first thing that a person sees before he or she log in. It displays the name of the application, a brief explanation of what it does and a Sign in with Google button is at the center. When the student is already being logged in the page automatically skips and redirects the student to the dashboard. Setup Page - Only shown once in a lifetime of the student at any rate, once they log in using Google, the first time. It requests the student to enter their first and last name as the app will welcome him or her on the dashboard. After submitting their name they do not come to see this page again.
+## Pages & User Flow
+- **Landing Page (`/`)**: Public front page introducing the platform, interactive preview, and navigation to Sign In, Create Account, About, and Privacy Policy. Logged-in users are redirected directly to the Dashboard.
+- **Sign Up (`/signup`) & Sign In (`/signin`)**: Supports one-click Google OAuth 2.0 and Email/Password authentication. Signup enforces permanent email providers (`gmail.com`, `outlook.com`, `hotmail.com`, `icloud.com`, `yahoo.com`, `proton.me`, `.edu`, etc.), blocks temporary/disposable emails and temporary Google alias/dot-permutation generators, prevents duplicate accounts (including canonicalized Gmail dot variations), and redirects newly registered users to Sign In (with email pre-filled) and then straight to the Dashboard.
+- **Setup Page (`/setup`)**: First-time onboarding screen for Google OAuth sign-ins to confirm display name and default study subject.
+- **Dashboard (`/dashboard`)**: The main interactive AI study workspace featuring:
+  - Clean **New Chat welcome screen** on every login with personalized time-of-day greeting and recent chat cards.
+  - Subject selector and AI model selector (Groq, Gemini, or student's custom BYOK model).
+  - Pre-warmed Lottie + animated pulse thinking indicator that displays immediately on the first and every subsequent message on both desktop and mobile.
+  - Pre-formatted DOM typewriter rendering (never displaying raw `*` or `**` Markdown markers while typing) with KaTeX math (`\(...\)` and `\[...\]`), syntax-highlighted IDE code blocks with one-click copy, collapsible **Show hint / Hide hint** cards, and non-blocking smart auto-scroll that allows students to freely scroll up and down while an explanation is generating.
+- **History (`/history`)**: Displays past study conversations grouped by session (`chat_id`) with search, subject filtering, and one-click session restoration onto the Dashboard.
+- **Profile (`/profile`)**: Shows student account details, total questions asked, subject distribution breakdown, and display name editing.
+- **Settings (`/settings`)**:
+  - **General & Learning Preferences**: Default subject, preferred AI model, academic grade level (Middle School, High School, College, Graduate), teaching style (Step-by-Step, Socratic, Direct, ELI5), response length, and optional practice problems.
+  - **BYOK API Keys Vault**: Live provider verification (`/verify_api_key`) and per-user server-side encryption (`PBKDF2-HMAC-SHA256` + `HMAC-SHA256`) stored in PostgreSQL (`User.settings`) without ever exposing keys in browser cookies or DOM.
+  - **Appearance & Data**: Dark/Light theme toggle, font size, compact mode, full JSON chat history export (`/export_data`) with ISO-8601 timestamps, and history clearing.
+- **About (`/about`) & Privacy Policy (`/privacy`)**: Project overview, supported model catalog, creator contact information, and full data privacy/security documentation.
 
-Dashboard - It is the most crucial page and the core of the app. Once a student has logged in, this is where he/she will find themselves after each time. It displays a welcome message with their name on top, a big text box where they write their question, a dropdown where they can choose the subject of their question, be it Math, Science, Computer Science, History, English, or Other, and a Get Help button. On clicking the button a loading spinner will be displayed as the AI begins to think and the answer will be presented in a neat answer-box below the form.
-
-History — Collaborative writing provides information on all the questions and answers asked by the student since he or she began using the app. Every post displays the topic they chose, their typed question, and the answer provided by the AI. Every student can only view his/her history which makes it personal to them.
-
-Profile - This page provides personal details of the student that includes his or her name, Google email address and the overall number of questions he or she has already asked. It also includes an Edit Name button to enable them correct their name in case of a mistake or to change it, and a Sign Out button to leave the app.
-
-Settings — Here the student is able to modify how the app functions to suit them. It has a dropdown to choose a default subject to avoid them having to choose it each and every time that they pose a question. It features a switch to enable light or dark theme in the entire application. It also has a Clear History button which re-writes all their past questions and answers should they wish to have a new start. About - It is a simple informational page with details of what the app is, why it was developed, and who developed it. It contains a github link and an email address of the builder. The page is primarily helpful when a recruiter and a visitor need to know more regarding the project.
-
-Tech Stack The entire backend is written in Python. All the pages and routes are handled by Flask. Google Sign In can be added using Flask-Dance without having to construct it manually. The name of the student, the state of their login, and their settings are stored in Flask-Session between visits of the page, while question history and user records are stored permanently in a PostgreSQL database (hosted on Neon Cloud) through Flask-SQLAlchemy. The AI brain that will read the question provided by the student and produce the answer is the Groq API (Llama 3), with the Gemini API as an automatic backup. The visual design and layout of each page are dealt with by HTML and CSS. JavaScript processes the spinner on loading, the theme of light and dark and the form submit action. To keep the app responsive, a client-side ping is sent every 10 minutes so the Render server never goes idle.
-
-Build Order Since just HTML and no logic are used, create the skeleton of all 7 pages first. Next add Google Sign In. Then attach the setup page to store the name of a student. Then secure the pages in such a way that they are only accessed by logged in students. Then attach the AI (Groq/Gemini) to the dashboard. Save and view history of questions. Construct the profile page then. Finally create the settings page.
-
-Tech Stack:
-
-The exact tech stack you are using: Frontend — what the student sees: HTML, CSS, and JavaScript. These 3 files build every page the student looks at and clicks on. Backend — the brain behind the app: Python with Flask. This handles everything that happens behind the scenes like saving the student's name, checking if they are logged in, and sending questions to the AI. Authentication — how students log in: Google Sign In using Flask-Dance. Students click one button and sign in with their Google account. No passwords needed. AI — what answers the questions: Groq API (Llama 3) as the first choice and Gemini API as the backup. Both are completely free. Storage — where data is saved: PostgreSQL (hosted on Neon Cloud) via Flask-SQLAlchemy for permanent data — user records and question history. Flask-Session handles login state and in-session settings while the student is active.
+## Tech Stack
+- **Frontend**: HTML5, CSS3 (`app-shell.css` and `style.css` unified warm dark/light theme), Vanilla JavaScript, Jinja2 templates, KaTeX, Highlight.js, DotLottie.
+- **Backend**: Python, Flask, Gunicorn (`--workers 2 --threads 4 --timeout 120`).
+- **Authentication & Security**: Google OAuth 2.0 (Flask-Dance), Werkzeug `pbkdf2:sha256` password hashing, per-user PBKDF2-SHA256 + HMAC-SHA256 API key encryption.
+- **Database**: PostgreSQL hosted on Neon Cloud via Flask-SQLAlchemy (`User` and `Message` tables) with automatic connection pooling and retry resilience.
+- **Deployment**: Hosted on Render with a client-side keep-alive ping (`/ping`) every 10 minutes.

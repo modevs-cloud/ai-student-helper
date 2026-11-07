@@ -116,9 +116,17 @@ def get_user_record():
     if "user" not in session: 
         return None
     email = session["user"].get("email")
-    if not email: return None
-    u = User.query.filter_by(email=email).first()
-    return u
+    if not email:
+        return None
+    try:
+        return User.query.filter_by(email=email).first()
+    except Exception:
+        try:
+            db.session.rollback()
+            return User.query.filter_by(email=email).first()
+        except Exception as db_err:
+            print(f"WARN get_user_record DB retry failed: {type(db_err).__name__}")
+            return None
 
 def _format_model_name(raw_model: str) -> str:
     """Formats stored model_used strings cleanly without lowercasing custom model labels."""
@@ -193,20 +201,19 @@ def get_session_history():
 def get_session_active_chat():
     """
     Gets all the messages for the current conversation the user is looking at.
-    This lets them read their previous back-and-forth messages on the Dashboard.
+    When the user first logs in (before starting or selecting a chat), active_chat_id
+    is not set so the Dashboard always opens on the friendly New Chat welcome screen.
     """
     u = get_user_record()
-    if not u: return []
-    
+    if not u:
+        return []
+
     active_chat_id = session.get("active_chat_id")
-    if active_chat_id:
-        msgs = Message.query.filter_by(user_id=u.id, chat_id=active_chat_id).order_by(Message.created_at.asc()).all()
-        if not msgs:
-            # Fallback
-            msgs = Message.query.filter_by(user_id=u.id, is_active=True).order_by(Message.created_at.asc()).all()
-    else:
-        msgs = Message.query.filter_by(user_id=u.id, is_active=True).order_by(Message.created_at.asc()).all()
-        
+    if not active_chat_id:
+        return []
+
+    msgs = Message.query.filter_by(user_id=u.id, chat_id=active_chat_id).order_by(Message.created_at.asc()).all()
+
     return [{
         "id": m.id,
         "chat_id": m.chat_id,
@@ -232,13 +239,22 @@ def login_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        is_ajax = (
+            request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or "application/json" in request.headers.get("Accept", "")
+        )
         if "user" not in session:
+            if is_ajax:
+                return jsonify({"error": "Your session expired. Please refresh the page and sign in again."}), 401
             return redirect(url_for("landing"))
         
         # Verify user still exists in database (prevents ghost sessions after DB wipe)
         email = session["user"].get("email")
-        if not email or not User.query.filter_by(email=email).first():
+        u_rec = get_user_record() if email else None
+        if not email or not u_rec:
             session.clear()
+            if is_ajax:
+                return jsonify({"error": "Your session expired. Please refresh the page and sign in again."}), 401
             return redirect(url_for("landing"))
             
         return f(*args, **kwargs)
@@ -296,9 +312,11 @@ CUSTOM_PROVIDER_CATALOG = {
         "label": "Groq",
         "placeholder": "gsk_...",
         "models": [
+            {"id": "openai/gpt-oss-120b", "label": "GPT-OSS 120B (Groq)"},
+            {"id": "qwen/qwen3.8-27b", "label": "Qwen 3.8 27B (Groq)"},
+            {"id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B Instant"},
             {"id": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B Versatile"},
             {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B Instant"},
-            {"id": "gemma2-9b-it", "label": "Gemma 2 9B"},
         ],
     },
     "gemini": {
@@ -685,19 +703,37 @@ def _discover_gemini_models(key: str, prefer_pro: bool = False) -> list:
         return []
 
 
-def ask_groq(messages, api_key=None, model_name="llama-3.3-70b-versatile"):
+_WORKING_GROQ_MODEL_CACHE = {}
+
+
+def ask_groq(messages, api_key=None, model_name="openai/gpt-oss-120b"):
     """
-    Sends the user's question to the Groq API (using the Llama 3 model).
-    Automatically falls back across active Groq models or discovers live models via /v1/models.
+    Sends the user's question to the Groq API.
+    Automatically caches the working model per key and falls back across active Groq chat models.
     """
     key = (api_key or os.getenv("GROQ_API_KEY", "")).strip()
     if not key:
         return None
-    primary = (model_name or "llama-3.3-70b-versatile").strip()
-    candidates = [primary] + [
-        m for m in ("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it")
-        if m != primary
-    ]
+    primary = (model_name or "openai/gpt-oss-120b").strip()
+    cache_key = key[:16]
+    cached_working = _WORKING_GROQ_MODEL_CACHE.get(cache_key)
+
+    seed = (
+        ([cached_working] if cached_working else [])
+        + [primary]
+        + [
+            "openai/gpt-oss-120b",
+            "qwen/qwen3.8-27b",
+            "openai/gpt-oss-20b",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+        ]
+    )
+    candidates = []
+    for m in seed:
+        if m and m not in candidates:
+            candidates.append(m)
+
     tried = set()
     for candidate in candidates:
         tried.add(candidate)
@@ -710,38 +746,46 @@ def ask_groq(messages, api_key=None, model_name="llama-3.3-70b-versatile"):
                     "messages": messages,
                     "max_tokens": 4000,
                 },
-                timeout=45,
+                timeout=22,
             )
             if resp.ok:
-                return resp.json()["choices"][0]["message"]["content"].strip()
+                ans = resp.json()["choices"][0]["message"]["content"].strip()
+                if ans:
+                    _WORKING_GROQ_MODEL_CACHE[cache_key] = candidate
+                    return ans
             elif resp.status_code in (401, 403):
                 print(f"Groq auth error {resp.status_code}")
                 return None
             else:
-                print(f"Groq API error {resp.status_code} ({candidate}): {resp.text[:160]}")
+                print(f"Groq API status {resp.status_code} ({candidate})")
         except Exception as e:
             print(f"Groq error ({candidate}): {type(e).__name__}")
 
     # Dynamic fallback: discover active chat models from Groq /v1/models
+    skip_groq_tokens = ("whisper", "tts", "guard", "safeguard", "orpheus", "embed", "vision", "playai")
     try:
         m_resp = req.get(
             "https://api.groq.com/openai/v1/models",
             headers={"Authorization": f"Bearer {key}"},
-            timeout=10,
+            timeout=8,
         )
         if m_resp.ok:
             for item in m_resp.json().get("data", []):
                 mid = (item.get("id") or "").strip()
-                if not mid or mid in tried or any(x in mid.lower() for x in ("whisper", "tts", "guard", "embed", "vision")):
+                if not mid or mid in tried or any(x in mid.lower() for x in skip_groq_tokens):
                     continue
+                tried.add(mid)
                 resp = req.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                     json={"model": mid, "messages": messages, "max_tokens": 4000},
-                    timeout=45,
+                    timeout=22,
                 )
                 if resp.ok:
-                    return resp.json()["choices"][0]["message"]["content"].strip()
+                    ans = resp.json()["choices"][0]["message"]["content"].strip()
+                    if ans:
+                        _WORKING_GROQ_MODEL_CACHE[cache_key] = mid
+                        return ans
     except Exception as e:
         print(f"Groq dynamic fallback error: {type(e).__name__}")
     return None
@@ -753,8 +797,8 @@ _WORKING_GEMINI_MODEL_CACHE = {}
 def ask_gemini(messages, api_key=None, model_name="gemini-2.5-flash"):
     """
     Sends the user's question to the Google Gemini API.
-    Dynamically discovers live generateContent models for the key if a model ID is retired or 404s,
-    and caches the working model per key so subsequent messages succeed on the first call.
+    Tries cached and current production models first for fast latency, and dynamically discovers
+    live generateContent models only if needed.
     """
     import re as _re
     key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
@@ -777,21 +821,18 @@ def ask_gemini(messages, api_key=None, model_name="gemini-2.5-flash"):
         elif msg["role"] == "assistant":
             contents.append({"role": "model", "parts": [{"text": msg["content"]}]})
 
-    # Discover live models directly supported by this key on Google's API
-    discovered = _discover_gemini_models(key, prefer_pro=prefer_pro)
-    seed_list = (
+    fast_seed = (
         ([cached_working] if cached_working else [])
         + [primary]
-        + (["gemini-pro-latest", "gemini-flash-latest"] if prefer_pro else ["gemini-flash-latest", "gemini-pro-latest"])
-        + ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.0-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
-        + discovered
+        + (["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"] if prefer_pro else ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"])
     )
     candidates = []
-    for m in seed_list:
+    for m in fast_seed:
         if m and m not in candidates:
             candidates.append(m)
 
     tried = set()
+    discovered_loaded = False
     idx = 0
     while idx < len(candidates):
         candidate = candidates[idx]
@@ -804,7 +845,7 @@ def ask_gemini(messages, api_key=None, model_name="gemini-2.5-flash"):
                 f"https://generativelanguage.googleapis.com/v1beta/models/{candidate}:generateContent",
                 headers={"x-goog-api-key": key, "Content-Type": "application/json"},
                 json={"contents": contents},
-                timeout=45,
+                timeout=25,
             )
             if resp.ok:
                 data = resp.json()
@@ -813,11 +854,11 @@ def ask_gemini(messages, api_key=None, model_name="gemini-2.5-flash"):
                     _WORKING_GEMINI_MODEL_CACHE[cache_key] = candidate
                     return cands[0]["content"]["parts"][0].get("text", "").strip()
             elif resp.status_code in (401, 403):
-                print(f"Gemini auth error {resp.status_code}: {resp.text[:200]}")
+                print(f"Gemini auth error {resp.status_code}")
                 break
             else:
                 full_err = resp.text or ""
-                print(f"Gemini API error {resp.status_code} ({candidate}): {full_err[:350]}")
+                print(f"Gemini API status {resp.status_code} ({candidate})")
                 # If Google's error message tells us the exact replacement model (e.g. 'use models/gemini-...'), try it immediately next!
                 for suggested in _re.findall(r"models/([a-zA-Z0-9._-]+)", full_err):
                     clean_sug = suggested.strip().rstrip(".,;\"'")
@@ -827,6 +868,12 @@ def ask_gemini(messages, api_key=None, model_name="gemini-2.5-flash"):
                         candidates.insert(idx, clean_sug)
         except Exception as e:
             print(f"Gemini error ({candidate}): {type(e).__name__}")
+
+        if idx >= len(candidates) and not discovered_loaded:
+            discovered_loaded = True
+            for dm in _discover_gemini_models(key, prefer_pro=prefer_pro):
+                if dm and dm not in candidates and dm not in tried:
+                    candidates.append(dm)
     return None
 
 
@@ -876,7 +923,7 @@ def ask_claude(messages, api_key, model_name="claude-sonnet-4-20250514"):
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=45,
+                timeout=30,
             )
             if resp.ok:
                 data = resp.json()
@@ -884,9 +931,10 @@ def ask_claude(messages, api_key, model_name="claude-sonnet-4-20250514"):
                 if blocks and isinstance(blocks, list):
                     return blocks[0].get("text", "").strip()
             elif resp.status_code in (401, 403):
+                print(f"Claude auth error {resp.status_code}")
                 break
             else:
-                print(f"Claude API error {resp.status_code} ({candidate}): {resp.text[:200]}")
+                print(f"Claude API status {resp.status_code} ({candidate})")
         except Exception as e:
             print(f"Claude error ({candidate}): {type(e).__name__}")
     return None
@@ -909,17 +957,64 @@ def ask_openai(messages, api_key, model_name="gpt-4.1-mini"):
                     "messages": messages,
                     "max_tokens": 4000,
                 },
-                timeout=45,
+                timeout=30,
             )
             if resp.ok:
                 return resp.json()["choices"][0]["message"]["content"].strip()
             elif resp.status_code in (401, 403):
+                print(f"OpenAI auth error {resp.status_code}")
                 break
             else:
-                print(f"OpenAI API error {resp.status_code} ({candidate}): {resp.text[:200]}")
+                print(f"OpenAI API status {resp.status_code} ({candidate})")
         except Exception as e:
             print(f"OpenAI error ({candidate}): {type(e).__name__}")
     return None
+
+
+def _clean_ai_response(answer: str, question: str = "") -> str:
+    """
+    1. Strips repetitive self-introductions ('Hi! I'm AI Student Helper...') unless
+       the user explicitly asked who the AI is or who built the website.
+    2. Normalizes standalone 'Hint: ...' lines or <details> hint blocks into
+       [HINT]...[/HINT] so the frontend always renders them as a hideable hint card.
+    """
+    if not answer:
+        return answer
+
+    q_low = (question or "").lower()
+    asked_identity = any(
+        phrase in q_low
+        for phrase in ("who are you", "what are you", "your name", "who built", "who made", "who created", "about this")
+    )
+
+    cleaned = answer.strip()
+    if not asked_identity:
+        # Remove leading self-introduction sentences like "Hi! I'm AI Student Helper, your study companion. "
+        intro_patterns = [
+            r"^(?:hi|hello|hey|greetings)[,!.\s—\-]+i(?:\s+am|'m|\u2019m)\s+(?:an?\s+)?(?:ai\s+student\s+helper|i\s+student\s+helper|student\s+helper)[^.!?\n]*[.!?]\s*",
+            r"^i(?:\s+am|'m|\u2019m)\s+(?:an?\s+)?(?:ai\s+student\s+helper|i\s+student\s+helper|student\s+helper)[^.!?\n]*[.!?]\s*",
+        ]
+        for pat in intro_patterns:
+            cleaned = re.sub(pat, "", cleaned, flags=re.IGNORECASE).strip()
+
+    # Convert <details>...<summary>...Hint...</summary>...</details> into [HINT]...[/HINT]
+    cleaned = re.sub(
+        r"<details[^>]*>\s*<summary[^>]*>[\s\S]*?</summary>\s*([\s\S]*?)\s*</details>",
+        lambda m: f"\n[HINT]{m.group(1).strip()}[/HINT]\n",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+
+    # Convert standalone "Hint: ..." or "**Hint:** ..." lines (that aren't already inside [HINT]) into [HINT]...[/HINT]
+    if "[HINT]" not in cleaned:
+        cleaned = re.sub(
+            r"(?:^|\n)[ \t]*(?:>\s*)?(?:\*\*|\*)?Hint(?:\s*\d*)?[ \t]*:[ \t]*(?:\*\*|\*)?[ \t]*([^\n]+)",
+            lambda m: f"\n[HINT]{m.group(1).strip().rstrip('*').strip()}[/HINT]",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+    return cleaned
 
 
 def ask_ai(question, subject, model="groq", chat_history=None, custom_config=None, user_settings=None):
@@ -950,26 +1045,28 @@ def ask_ai(question, subject, model="groq", chat_history=None, custom_config=Non
     tone_desc = tone_map.get(prefs.get("ai_tone", "step_by_step"), tone_map["step_by_step"])
     length_desc = length_map.get(prefs.get("response_length", "balanced"), length_map["balanced"])
     practice_desc = (
-        "\n- At the end of your explanation, include 1 short practice problem (with a hidden/brief hint) so the student can test their understanding."
+        "\n- At the end of your explanation, include 1 short practice problem so the student can test their understanding, "
+        "followed by a helpful hint wrapped inside [HINT] and [/HINT] tags (e.g. [HINT]Start by isolating x on the left side.[/HINT])."
         if prefs.get("include_practice", False)
         else ""
     )
 
     system_content = (
-        "You are 'AI Student Helper' (also known as 'I Student Helper'), a premium AI-powered homework helper "
-        "and study companion web application. Explain things simply, concisely, and clearly to the student. "
-        "When answering math questions, use proper mathematical notation. For inline math use \\( ... \\) "
-        "and for block/display equations use \\[ ... \\] so they render beautifully.\n"
+        "You are a knowledgeable, friendly academic tutor helping a student learn and understand their coursework. "
+        "Explain concepts simply, concisely, and clearly.\n"
+        "IMPORTANT CONVERSATION RULES:\n"
+        "- NEVER start your responses with 'Hi, I'm AI Student Helper', 'Hi, I'm a Student Helper', or any repetitive self-introduction. "
+        "Respond naturally and go straight to helping the student.\n"
+        "- Whenever you include a hint (whether for a practice problem or when the student asks for a hint), ALWAYS wrap the hint text "
+        "inside [HINT] and [/HINT] tags on its own line, for example: [HINT]Factor out the common term first.[/HINT] so the student can click to reveal or hide it.\n"
+        "- When answering math questions, use proper mathematical notation: for inline math use \\( ... \\) "
+        "and for block/display equations use \\[ ... \\] so they render cleanly.\n"
         f"Student Learning Preferences:\n"
         f"- Target Academic Level: Tailor your explanation for {grade_desc}.\n"
         f"- Teaching Style: {tone_desc}\n"
         f"- Response Length: {length_desc}{practice_desc}\n"
-        "Here is what you should know about this website:\n"
-        "- Creator/Builder: This website was created and built by Mohammad as a helpful study companion project.\n"
-        "- Purpose: To help students learn smarter and get instant, simplified explanations on academic subjects (Math, Science, History, English, CS).\n"
-        "If a user asks who built this website or what it is, answer in a friendly, humble tone that it is "
-        "an AI study companion created by Mohammad to help students learn. Do NOT explain deep backend tech stack implementation details, "
-        "file databases, specific keys, or backend architecture. Keep all answers clean, brief, and student-focused."
+        "Only if the student explicitly asks who built this website or what this app is, reply warmly that it is "
+        "AI Student Helper, a study companion created by Mohammad to help students learn across academic subjects."
     )
 
     # Build messages list with full conversation history for memory
@@ -979,7 +1076,7 @@ def ask_ai(question, subject, model="groq", chat_history=None, custom_config=Non
     if chat_history:
         for item in chat_history[-10:]:
             messages.append({"role": "user", "content": item["question"]})
-            messages.append({"role": "assistant", "content": item["answer"]})
+            messages.append({"role": "assistant", "content": _clean_ai_response(item["answer"], item["question"])})
 
     # Add the current question
     messages.append({
@@ -1022,7 +1119,8 @@ def ask_ai(question, subject, model="groq", chat_history=None, custom_config=Non
         answer = (
             "AI is temporarily unavailable. Please try again in a moment."
         )
-    return answer
+        return answer
+    return _clean_ai_response(answer, question)
 
 
 
@@ -1116,6 +1214,12 @@ def after_login():
         # Step 5: Send them to Dashboard if they exist, otherwise to Setup screen
         if saved:
             session.pop("needs_setup", None)
+            session.pop("active_chat_id", None)
+            try:
+                Message.query.filter_by(user_id=saved.id, is_active=True).update({"is_active": False})
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
             session["user"]["email"] = saved.email
             session["display_name"] = f"{saved.first_name or ''} {saved.last_name or ''}".strip() or info.get("name") or "Student"
             clean_settings = _sanitize_session_settings(saved.settings, saved.default_subject or "Math")
@@ -1440,8 +1544,14 @@ def signin():
                 flash("Incorrect password. Please try again.")
                 return render_template("signin.html", prefill_email=email)
                 
-            # Step 5: Success! Save their info in the session cookie and send straight to Dashboard
+            # Step 5: Success! Save their info in the session cookie and send straight to Dashboard (New Chat welcome screen)
             session.pop("needs_setup", None)
+            session.pop("active_chat_id", None)
+            try:
+                Message.query.filter_by(user_id=user_record.id, is_active=True).update({"is_active": False})
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
             session["user"] = {
                 "email": user_record.email,
                 "name": f"{user_record.first_name or ''} {user_record.last_name or ''}".strip() or "Student",
@@ -1625,11 +1735,12 @@ def dashboard():
         else:
 
             try:
-                # Import the threading library to run the AI request in the background
-                import threading as _threading
-
                 # Grab the recent conversation history so the AI remembers what was just said
-                current_chat = get_session_active_chat()
+                try:
+                    current_chat = get_session_active_chat()
+                except Exception:
+                    db.session.rollback()
+                    current_chat = []
 
                 # Build custom API configuration if the user saved their own key in Settings
                 custom_cfg = {
@@ -1639,65 +1750,71 @@ def dashboard():
                     "api_key": get_saved_custom_api_key(settings),
                 }
 
-                # Create a dictionary to hold the AI's answer once it finishes thinking
-                _result = {"answer": None}
-                # Define a tiny function that will actually talk to the AI API
-                def _run():
-                    with app.app_context():
-                        _result["answer"] = ask_ai(
-                            question, subject, model,
-                            chat_history=current_chat,
-                            custom_config=custom_cfg,
-                            user_settings=settings,
-                        )
-                # Create a background thread to run the AI function so the web server doesn't freeze
-                _t = _threading.Thread(target=_run, daemon=True)
-                # Start the background thread
-                _t.start()
-                # Wait up to 60 seconds for the AI to finish answering
-                _t.join(timeout=60)
+                answer = ask_ai(
+                    question, subject, model,
+                    chat_history=current_chat,
+                    custom_config=custom_cfg,
+                    user_settings=settings,
+                )
 
-                # If the thread is still running after 60s, or the AI gave us an empty answer
-                if _t.is_alive() or not _result["answer"]:
-                    # Create a friendly error message for the user instead of breaking the app
+                if not answer:
                     answer = (
                         "The AI is temporarily unavailable or took too long to respond. "
                         "Please try again in a moment."
                     )
-                else:
-                    # Otherwise, grab the successful answer from our dictionary
-                    answer = _result["answer"]
+
+                is_error_answer = (
+                    answer.startswith("AI is temporarily unavailable")
+                    or answer.startswith("The AI is temporarily unavailable")
+                    or answer.startswith("Your custom ")
+                )
 
                 # If this is a brand new conversation, generate a unique ID string for it
                 if "active_chat_id" not in session:
                     session["active_chat_id"] = str(uuid.uuid4())
 
-                # Friendly label for the model used (e.g. "Claude 3.5 Sonnet (Your Key)")
+                # Friendly label for the model used (e.g. "Claude Sonnet 4 (Your Key)")
                 used_label = get_model_display_label(model, settings)
 
-                # Get the logged-in user's database record
-                u = get_user_record()
-                # Respect the user's "Auto-save conversations" setting (defaults to True)
-                if u and settings.get("auto_save", True):
-                    # Create a new Message object to save the chat to the PostgreSQL database
-                    msg = Message(
-                        user_id=u.id, # Link it to this specific user
-                        chat_id=session["active_chat_id"], # Link it to this specific conversation
-                        subject=subject, # Save the subject
-                        question=question, # Save what the student asked
-                        answer=answer, # Save what the AI answered
-                        model_used=used_label if model == "custom" else model, # Save model used
-                        is_active=True # Mark the message as visible
-                    )
-                    # Add the new message to the database queue
-                    db.session.add(msg)
-                    # Permanently save the queue into the database
-                    db.session.commit()
-                # Tell Flask that the session data changed and needs to be saved
+                # Save to PostgreSQL only when we have a real AI answer (never persist error messages)
+                if not is_error_answer:
+                    try:
+                        u = get_user_record()
+                        if u and settings.get("auto_save", True):
+                            msg = Message(
+                                user_id=u.id,
+                                chat_id=session["active_chat_id"],
+                                subject=subject,
+                                question=question,
+                                answer=answer,
+                                model_used=used_label if model == "custom" else model,
+                                is_active=True
+                            )
+                            db.session.add(msg)
+                            db.session.commit()
+                        _persist_user()
+                    except Exception as db_save_err:
+                        print(f"WARN dashboard DB save retry: {type(db_save_err).__name__}")
+                        try:
+                            db.session.rollback()
+                            u = get_user_record()
+                            if u and settings.get("auto_save", True):
+                                msg = Message(
+                                    user_id=u.id,
+                                    chat_id=session["active_chat_id"],
+                                    subject=subject,
+                                    question=question,
+                                    answer=answer,
+                                    model_used=used_label if model == "custom" else model,
+                                    is_active=True
+                                )
+                                db.session.add(msg)
+                                db.session.commit()
+                        except Exception as db_save_err2:
+                            db.session.rollback()
+                            print(f"ERROR dashboard DB save: {type(db_save_err2).__name__}")
+
                 session.modified = True
-                # Helper function to save any profile updates
-                _persist_user()
-                # Flag to tell the frontend that we have a new answer to display
                 is_new_answer = True
 
             # If literally anything else crashes in the Python code above
@@ -2123,8 +2240,13 @@ def privacy():
 @app.route("/logout")
 def logout():
     try:
+        u = get_user_record()
+        if u:
+            Message.query.filter_by(user_id=u.id, is_active=True).update({"is_active": False})
+            db.session.commit()
         _persist_user()
     except Exception as e:
+        db.session.rollback()
         print(f"ERROR /logout persist: {e}")
     session.clear()
     return redirect(url_for("landing"))

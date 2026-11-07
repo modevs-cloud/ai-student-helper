@@ -1,4 +1,4 @@
-# 🎓 AI Student Helper
+# AI Student Helper
 
 **A full-stack web application that gives students instant AI-powered academic help on any subject.** 
 
@@ -10,11 +10,15 @@ Students can sign in with Google, ask questions across subjects, and receive cle
 
 ---
 
-##  Features
+## Features
 
-- **Flexible Authentication:** Seamless Google OAuth 2.0 one-click sign-in plus Email & Password registration with Werkzeug salted password hashing.
+- **Flexible Authentication:** Seamless Google OAuth 2.0 one-click sign-in plus Email & Password registration with Werkzeug salted password hashing (`pbkdf2:sha256`). After creating an account, users are sent to Sign In (email pre-filled) and then straight to the Dashboard's clean New Chat welcome screen.
+- **Anti-Abuse Email Validation:** Signup accepts only permanent providers (Gmail, Outlook, Hotmail, Live, iCloud, Yahoo, Proton, AOL, Zoho, and school `.edu` / `.ac.*` domains). Temporary and disposable emails are blocked, including temporary-Google tricks (`+` aliases, `@googlemail.com`, and dot-permutation generator addresses). Validation runs both in the browser and on the server, and also applies to Google sign-in.
+- **Duplicate Account Prevention:** Gmail addresses are canonicalized (dots ignored), so `john.doe@gmail.com` and `johndoe@gmail.com` cannot create two accounts. A duplicate signup is redirected to Sign In.
+- **Privacy Policy Page:** Dedicated `/privacy` page linked from the signup form, footer, and settings.
+- **Full Data Export:** Settings export includes the complete chat history with ISO-8601 timestamps.
 - **Bring Your Own API Key (BYOK) Encrypted Vault:** Students can optionally connect their personal Anthropic Claude, Google Gemini, OpenAI, or Groq API keys in Settings — verified live against the provider, encrypted at rest in PostgreSQL (`PBKDF2-HMAC-SHA256` + `HMAC-SHA256`), and never exposed in browser cookies or DOM.
-- **Interactive Dashboard:** A warm, distraction-free chat workspace with KaTeX math rendering, code syntax blocks, subject & model selectors, and responsive PC/mobile navigation.
+- **Interactive Dashboard & Hideable Hints:** A warm, distraction-free chat workspace that opens to a personalized New Chat welcome screen on every login, featuring pre-warmed Lottie thinking animations, pre-formatted DOM typewriter streaming (with zero raw Markdown asterisks shown while generating), KaTeX math rendering, syntax-highlighted code blocks, interactive hideable Hint cards (`Show hint` / `Hide hint`), and free scrolling while answers are generating.
 - **Dual Built-in AI Models with Auto-Fallback:**
   - **Groq API with Llama 3** — the primary built-in model. Ultra-fast inference, great for quick answers.
   - **Google Gemini API** — automatic silent fallback. If Groq hits a rate limit or is unavailable, Gemini takes over instantly with no error shown to the user.
@@ -52,7 +56,7 @@ Students can sign in with Google, ask questions across subjects, and receive cle
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 ai-student-helper/
@@ -80,7 +84,7 @@ ai-student-helper/
     └── privacy.html        # Privacy Policy & Terms of Use
 ```
 
-## 🗄️ Database Architecture
+## Database Architecture
 
 The application uses a PostgreSQL database hosted on Neon Cloud, containing two main tables:
 

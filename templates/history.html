@@ -67,7 +67,8 @@
                 <div class="hist-qa-divider"></div>
                 <div class="hist-qa-col">
                   <div class="hist-qa-label">AI answer</div>
-                  <p class="hist-qa-text">{{ item.answer[:130] }}{% if item.answer|length > 130 %}…{% endif %}</p>
+                  {% set clean_ans = item.answer|replace('[HINT]', 'Hint: ')|replace('[/HINT]', '')|replace('***', '')|replace('**', '')|replace('### ', '')|replace('## ', '')|replace('# ', '') %}
+                  <p class="hist-qa-text">{{ clean_ans[:130] }}{% if clean_ans|length > 130 %}…{% endif %}</p>
                 </div>
               </div>
             </article>
